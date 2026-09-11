@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
+import { FinanceProvider } from '@/components/finance/finance-context'
 import './globals.css'
 
 const inter = Inter({
@@ -47,7 +48,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <FinanceProvider>
+            <AppShell>{children}</AppShell>
+          </FinanceProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

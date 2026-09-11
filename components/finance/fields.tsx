@@ -138,3 +138,37 @@ export function NumberField({
     </div>
   )
 }
+
+/** Checkbox-style toggle row with label and description. */
+export function ToggleField({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  id: string
+  label: string
+  description?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-secondary/40 p-3 transition-colors hover:border-gold/40"
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 size-4 shrink-0 accent-[var(--gold)]"
+      />
+      <span className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium text-foreground">{label}</span>
+        {description && <span className="text-xs leading-relaxed text-muted-foreground">{description}</span>}
+      </span>
+    </label>
+  )
+}
