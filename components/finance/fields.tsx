@@ -5,8 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { formatRupiah } from '@/lib/format'
-import { parseNumberInput } from '@/lib/format'
+import { formatRupiahShort, parseNumberInput } from '@/lib/format'
 
 /** Plain text field for identity data. */
 export function TextField({
@@ -93,10 +92,12 @@ export function NumberField({
 
   // Keep local text in sync if the value is reset externally (e.g. cleared).
   useEffect(() => {
-    if (!Number.isFinite(value) && text !== '') return // let user keep partial input
-    if (Number.isFinite(value) && Number(parseNumberInput(text)) !== value) {
-      setText(String(value))
+    if (!Number.isFinite(value)) {
+      // External reset: local text parses to a number but the value was cleared.
+      if (text !== '' && Number.isFinite(parseNumberInput(text))) setText('')
+      return // otherwise let the user keep partial input
     }
+    if (parseNumberInput(text) !== value) setText(String(value))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
@@ -133,7 +134,7 @@ export function NumberField({
         )}
       </div>
       {money && Number.isFinite(value) && (
-        <span className="text-xs text-muted-foreground tabular-nums">{formatRupiah(value)}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{formatRupiahShort(value)}</span>
       )}
     </div>
   )

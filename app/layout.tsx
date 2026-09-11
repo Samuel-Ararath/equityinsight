@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/app-shell'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { FinancialsProvider } from '@/lib/financials-context'
 import './globals.css'
 
 const inter = Inter({
@@ -18,9 +20,9 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'Asyurian Investment — Analisis Valuasi & Kinerja',
+  title: 'Asyurian Investment — Equity Insight',
   description:
-    'Platform analisis valuasi dan kinerja perusahaan untuk investor value investing. Graham Number, DCF, DDM, rasio keuangan, dan margin of safety.',
+    'Platform analisis valuasi dan kinerja perusahaan berbasis teori investasi: Graham Number, WACC/CAPM, DCF, DDM, Real Options, DuPont, Altman Z-Score, Piotroski F-Score, dan margin of safety.',
   generator: 'v0.app',
 }
 
@@ -47,7 +49,11 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <TooltipProvider delay={150}>
+            <FinancialsProvider>
+              <AppShell>{children}</AppShell>
+            </FinancialsProvider>
+          </TooltipProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

@@ -1,26 +1,61 @@
 'use client'
 
-import { Info } from 'lucide-react'
+import { BookOpen, Info } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 
-// Lightweight hover/focus tooltip using a CSS group — no external dependency.
-function InfoTooltip({ text }: { text: string }) {
+/** Ikon info kecil dengan tooltip shadcn — untuk penjelasan field/asumsi. */
+function InfoTooltip({ text, className }: { text: string; className?: string }) {
   return (
-    <span className="group relative inline-flex">
-      <button
-        type="button"
+    <Tooltip>
+      <TooltipTrigger
         aria-label="Penjelasan"
-        className="inline-flex text-muted-foreground/70 transition-colors hover:text-gold focus-visible:text-gold focus-visible:outline-none"
+        className={cn(
+          'inline-flex text-muted-foreground/70 transition-colors hover:text-gold focus-visible:text-gold focus-visible:outline-none',
+          className,
+        )}
       >
         <Info className="size-3.5" />
-      </button>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg border border-border bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
-      >
-        {text}
-      </span>
-    </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">{text}</TooltipContent>
+    </Tooltip>
   )
 }
 
-export { InfoTooltip }
+/**
+ * Referensi teori: ikon buku dengan tooltip yang menyebutkan sumber akademik.
+ * Dipakai di setiap hasil kalkulasi.
+ */
+function TheoryRef({ source, className }: { source: string; className?: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        aria-label="Sumber teori"
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md text-muted-foreground/70 transition-colors hover:text-gold focus-visible:text-gold focus-visible:outline-none',
+          className,
+        )}
+      >
+        <BookOpen className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipContent className="max-w-72">
+        <span className="flex flex-col gap-0.5">
+          <span className="text-[0.65rem] font-semibold tracking-wider text-gold uppercase">Sumber teori</span>
+          <span>{source}</span>
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Footnote kecil di bawah kartu hasil, dengan ikon buku. */
+function TheoryFootnote({ source, className }: { source: string; className?: string }) {
+  return (
+    <p className={cn('flex items-start gap-1.5 text-[0.7rem] leading-relaxed text-muted-foreground', className)}>
+      <BookOpen className="mt-0.5 size-3 shrink-0 text-gold/70" />
+      <span>{source}</span>
+    </p>
+  )
+}
+
+export { InfoTooltip, TheoryRef, TheoryFootnote }

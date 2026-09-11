@@ -8,6 +8,7 @@ import {
   Calculator,
   ChartLine,
   Database,
+  FileSpreadsheet,
   LayoutDashboard,
   Menu,
   PanelLeftClose,
@@ -28,6 +29,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/input-laporan', label: 'Input Laporan Keuangan', icon: FileSpreadsheet },
   { href: '/valuasi', label: 'Valuasi Perusahaan', icon: Calculator },
   { href: '/kinerja', label: 'Analisis Kinerja', icon: Activity },
   { href: '/saham', label: 'Analisis Saham', icon: TrendingUp },
@@ -36,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const BREADCRUMB_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
+  'input-laporan': 'Input Laporan Keuangan',
   valuasi: 'Valuasi Perusahaan',
   kinerja: 'Analisis Kinerja',
   saham: 'Analisis Saham',
