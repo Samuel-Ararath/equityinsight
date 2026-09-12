@@ -11,7 +11,6 @@ A modern web platform designed to [insert a brief description here, e.g., track 
 ## 🛠 Tech Stack
 
 * **Framework:** [Next.js](https://nextjs.org/)
-* **Styling:** [Tailwind CSS](https://tailwindcss.com/) *(remove if you don't use this)*
 * **Language:** TypeScript / JavaScript
 
 ## 🚀 Getting Started
