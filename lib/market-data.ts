@@ -81,9 +81,11 @@ export async function getCandles(assetId: string, timeframe = '1d'): Promise<Mar
   )
 }
 
-export async function syncMarketData(symbol?: string) {
+export async function syncMarketData(symbol?: string, timeframe = '1d') {
   assertConfig()
-  const suffix = symbol ? `?symbol=${encodeURIComponent(symbol)}` : ''
+  const params = new URLSearchParams({ timeframe })
+  if (symbol) params.set('symbol', symbol)
+  const suffix = `?${params.toString()}`
   // Public market ingestion uses a simple GET so GitHub Pages does not trigger
   // a browser preflight request. The Edge Function is limited to public market
   // cache writes and applies a refresh rate limit.
