@@ -47,6 +47,7 @@ export type FinancialData = {
 export type ValuationAssumptions = {
   growthRate: number // annual growth, percent (e.g. 8)
   discountRate: number // WACC / discount rate, percent (e.g. 12)
+  grahamBondYield: number // Graham reference bond yield, percent (e.g. 4.4)
   perSektor: number // sector average P/E (optional, NaN if empty)
   pbvSektor: number // sector average P/BV (optional, NaN if empty)
 }
@@ -81,6 +82,7 @@ export const EMPTY_FINANCIALS: FinancialData = {
 export const DEFAULT_ASSUMPTIONS: ValuationAssumptions = {
   growthRate: 8,
   discountRate: 12,
+  grahamBondYield: 4.4,
   perSektor: NaN,
   pbvSektor: NaN,
 }

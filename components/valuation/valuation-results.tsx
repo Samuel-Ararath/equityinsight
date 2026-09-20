@@ -1,6 +1,6 @@
 'use client'
 
-import { Coins, Gauge, LineChart, Scale, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Coins, Gauge, LineChart, Scale, ShieldAlert, Sparkles, Target, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MarginGauge, marginColor } from '@/components/valuation/margin-gauge'
@@ -81,9 +81,25 @@ export function ValuationResults({
   const price = financials.hargaSaham
   const hasAnything = result.fairValues.length > 0 || Number.isFinite(result.eps)
   const color = marginColor(result.marginOfSafety)
+  const signal = result.recommendation
+  const level = (value: number) => Number.isFinite(value) ? formatRupiah(value) : '—'
 
   return (
     <div className="flex flex-col gap-4">
+      <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card">
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2"><span className="flex size-7 items-center justify-center rounded-md bg-primary/15 text-primary"><Target className="size-4" /></span>Model recommendation</CardTitle>
+          <Badge variant={signal.action === 'ACCUMULATE' ? 'positive' : signal.action === 'REDUCE' ? 'negative' : signal.action === 'NO_SIGNAL' ? 'outline' : 'warning'}>{signal.action}</Badge>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-1">
+          <p className="text-sm leading-relaxed text-muted-foreground">{signal.rationale}</p>
+          {Number.isFinite(signal.upside) && <div className="grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-border/80 bg-background/30 p-3"><p className="text-xs text-muted-foreground">Model upside / downside</p><p className={cn('mt-1 text-xl font-semibold tabular-nums', signal.upside >= 0 ? 'text-positive' : 'text-negative')}>{formatPercent(signal.upside, 1, true)}</p><p className="mt-1 text-[0.7rem] text-muted-foreground">terhadap harga saat ini</p></div><div className="rounded-lg border border-border/80 bg-background/30 p-3"><p className="text-xs text-muted-foreground">Zona beli model</p><p className="mt-1 text-sm font-semibold tabular-nums">{level(signal.buyZoneLow)} – {level(signal.buyZoneHigh)}</p><p className="mt-1 text-[0.7rem] text-muted-foreground">bukan jaminan eksekusi</p></div></div>}
+          {Number.isFinite(signal.takeProfit) && <div className="grid gap-3 sm:grid-cols-3 text-xs"><div><span className="flex items-center gap-1 text-muted-foreground"><ArrowUpRight className="size-3.5 text-positive" />Target profit</span><b className="mt-1 block text-sm tabular-nums">{level(signal.takeProfit)}</b></div><div><span className="flex items-center gap-1 text-muted-foreground"><ShieldAlert className="size-3.5 text-negative" />Stop / invalidation</span><b className="mt-1 block text-sm tabular-nums">{level(signal.stopLoss)}</b></div><div><span className="flex items-center gap-1 text-muted-foreground"><ArrowDownRight className="size-3.5 text-gold" />Zona exit</span><b className="mt-1 block text-sm tabular-nums">{level(signal.sellZoneLow)} – {level(signal.sellZoneHigh)}</b></div></div>}
+          {signal.shortBias && <div className="rounded-lg border border-negative/25 bg-negative/5 p-3 text-xs"><p className="font-semibold text-negative">Short bias terdeteksi</p><p className="mt-1 text-muted-foreground">Hanya relevan jika instrumen dan broker mendukung short selling.</p><div className="mt-2 grid gap-2 sm:grid-cols-3"><span>Entry: <b className="text-foreground">{level(signal.shortEntryLow)} – {level(signal.shortEntryHigh)}</b></span><span>Cover: <b className="text-foreground">{level(signal.coverTarget)}</b></span><span>Stop: <b className="text-foreground">{level(signal.shortStop)}</b></span></div></div>}
+          <p className="text-[0.7rem] text-muted-foreground">Sinyal ini adalah output model berbasis data dan asumsi, bukan instruksi transaksi atau jaminan keuntungan.</p>
+        </CardContent>
+      </Card>
+
       {/* ---- Margin of Safety summary (most prominent) ---- */}
       <Card className="overflow-hidden border-gold/25">
         <div className="flex flex-col items-center gap-6 p-6 md:flex-row md:items-center md:gap-8 md:p-7">
@@ -175,6 +191,26 @@ export function ValuationResults({
             <p className="mt-3 text-xs text-muted-foreground">
               √(22,5 × EPS × BVPS) — batas harga wajar konservatif ala Benjamin Graham.
             </p>
+          </ResultCard>
+
+          <ResultCard title="Graham Defensive Formula" icon={Gauge}>
+            <ValueLine label="Estimasi Nilai Wajar" value={result.grahamDefensiveValue} price={price} />
+            <p className="mt-3 text-xs text-muted-foreground">EPS × (8,5 + 2g) × 4,4/Y. Gunakan hanya dengan asumsi growth dan yield referensi yang jelas.</p>
+          </ResultCard>
+
+          <ResultCard title="Earnings Power Value" icon={Coins}>
+            <ValueLine label="Nilai Earnings Stabil" value={result.earningsPowerValue} price={price} />
+            <p className="mt-3 text-xs text-muted-foreground">EPS dibagi cost of equity. Ini screening sederhana, bukan pengganti DCF multi-skenario.</p>
+          </ResultCard>
+
+          <ResultCard title="Residual Income" icon={Scale}>
+            <ValueLine label="Nilai Berbasis Book Value" value={result.residualIncomeValue} price={price} />
+            <p className="mt-3 text-xs text-muted-foreground">BVPS + nilai kini residual income. Lebih relevan untuk bank dan bisnis dengan book value bermakna.</p>
+          </ResultCard>
+
+          <ResultCard title="Asset Value Proxy" icon={ShieldAlert}>
+            <ValueLine label="Aset dikurangi utang / saham" value={result.assetValueProxy} price={price} />
+            <p className="mt-3 text-xs text-muted-foreground">Proxy neraca; bukan liquidation value lengkap karena kewajiban lain harus dipetakan.</p>
           </ResultCard>
 
           {/* DCF */}

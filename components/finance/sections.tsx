@@ -211,6 +211,15 @@ export function AssumptionsSection({
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <NumberField
+            id="grahamBondYield"
+            label="Graham Bond Yield"
+            suffix="%"
+            value={value.grahamBondYield}
+            onChange={(v) => onChange({ grahamBondYield: v })}
+            tooltip="Yield referensi pada formula Graham Defensive. Jangan samakan otomatis dengan WACC; gunakan referensi obligasi yang Anda pilih."
+            placeholder="cth. 4.4"
+          />
+          <NumberField
             id="perSektor"
             label="PER Rata-rata Sektor"
             optional
