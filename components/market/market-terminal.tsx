@@ -83,7 +83,7 @@ export function MarketTerminal() {
     return assets.filter((asset) => `${asset.symbol} ${asset.display_name} ${asset.market} ${asset.asset_class}`.toLowerCase().includes(normalized))
   }, [assets, query])
   const groups = useMemo(() => filteredAssets.reduce<Record<string, MarketAsset[]>>((acc, asset) => {
-    const key = asset.market === 'IDX' ? 'Indonesia' : asset.asset_class === 'TREASURY_YIELD' ? 'U.S. Treasury' : 'Amerika & Global'
+    const key = asset.asset_class === 'CRYPTO' ? 'Crypto curated' : asset.market === 'IDX' ? 'Indonesia' : asset.asset_class === 'TREASURY_YIELD' ? 'U.S. Treasury' : 'Amerika & Global'
     acc[key] = [...(acc[key] ?? []), asset]
     return acc
   }, {}), [filteredAssets])
