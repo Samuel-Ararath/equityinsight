@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { AutoFinancialImport } from '@/components/finance/auto-import'
+import { ResearchIntegrityCard } from '@/components/finance/research-integrity-card'
 import { Button } from '@/components/ui/button'
 import {
   AssumptionsSection,
@@ -50,6 +51,7 @@ export default function ValuasiPage() {
             symbol={identity.kode}
             onApply={(patch) => setFinancials((current) => ({ ...current, ...patch }))}
           />
+          <ResearchIntegrityCard />
           <FinancialsSection
             value={financials}
             extended
