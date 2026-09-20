@@ -84,14 +84,11 @@ export async function getCandles(assetId: string, timeframe = '1d'): Promise<Mar
 export async function syncMarketData(symbol?: string) {
   assertConfig()
   const suffix = symbol ? `?symbol=${encodeURIComponent(symbol)}` : ''
+  // Public market ingestion uses a simple GET so GitHub Pages does not trigger
+  // a browser preflight request. The Edge Function is limited to public market
+  // cache writes and applies a refresh rate limit.
   const response = await fetch(`${SUPABASE_URL}/functions/v1/ingest-market-data${suffix}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY!,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ symbol }),
+    method: 'GET',
     cache: 'no-store',
   })
   if (!response.ok) {
