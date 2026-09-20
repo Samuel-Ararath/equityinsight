@@ -153,7 +153,7 @@ export function ValuationResults({
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <Sparkles className="size-6 text-gold" />
             <p className="text-sm text-muted-foreground">
-              Hasil kalkulasi akan muncul di sini secara otomatis saat Anda mengisi data keuangan.
+              Isi atau impor data keuangan, lalu klik “Jalankan valuasi” untuk memperbarui seluruh hasil.
             </p>
           </CardContent>
         </Card>

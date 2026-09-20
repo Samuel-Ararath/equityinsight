@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/page-header'
 import { AutoFinancialImport } from '@/components/finance/auto-import'
+import { Button } from '@/components/ui/button'
 import {
   AssumptionsSection,
   FinancialsSection,
@@ -23,9 +24,13 @@ export default function ValuasiPage() {
   const [identity, setIdentity] = useState<CompanyIdentity>(EMPTY_IDENTITY)
   const [financials, setFinancials] = useState<FinancialData>(EMPTY_FINANCIALS)
   const [assumptions, setAssumptions] = useState<ValuationAssumptions>(DEFAULT_ASSUMPTIONS)
+  const [calculation, setCalculation] = useState({ financials: EMPTY_FINANCIALS, assumptions: DEFAULT_ASSUMPTIONS })
 
-  // Reactive: recompute on every keystroke, no submit needed.
-  const result = useMemo(() => runValuation(financials, assumptions), [financials, assumptions])
+  const result = useMemo(() => runValuation(calculation.financials, calculation.assumptions), [calculation])
+
+  function runCalculation() {
+    setCalculation({ financials: { ...financials }, assumptions: { ...assumptions } })
+  }
 
   const title = identity.nama
     ? `Valuasi — ${identity.nama}${identity.kode ? ` (${identity.kode})` : ''}`
@@ -35,7 +40,7 @@ export default function ValuasiPage() {
     <div>
       <PageHeader
         title={title}
-        description="Hitung nilai wajar saham dengan Graham Number, DCF, Dividend Discount Model, dan relative valuation. Hasil diperbarui otomatis saat Anda mengetik."
+        description="Ambil laporan terbaru, periksa mapping angka, lalu jalankan Graham Number, DCF, Dividend Discount Model, dan relative valuation dengan transparan."
       />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:grid-cols-2">
         {/* Form column */}
@@ -57,7 +62,14 @@ export default function ValuasiPage() {
         </div>
         {/* Results column (sticky on large screens) */}
         <div className="lg:sticky lg:top-20 lg:self-start">
-          <ValuationResults result={result} financials={financials} />
+          <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Siap menghitung?</p>
+              <p className="mt-1 text-xs text-muted-foreground">Periksa angka yang terisi, lalu jalankan model valuasi dengan satu klik.</p>
+            </div>
+            <Button type="button" onClick={runCalculation}>Jalankan valuasi</Button>
+          </div>
+          <ValuationResults result={result} financials={calculation.financials} />
         </div>
       </div>
     </div>

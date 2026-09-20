@@ -68,6 +68,13 @@ export async function listMarketAssets(): Promise<MarketAsset[]> {
   )
 }
 
+export async function getAssetBySymbol(symbol: string): Promise<MarketAsset | null> {
+  const rows = await rest<MarketAsset[]>(
+    `market_assets?select=id,symbol,display_name,asset_class,market,currency,provider,provider_symbol,is_delayed&symbol=eq.${encodeURIComponent(symbol.trim().toUpperCase())}&is_active=eq.true&limit=1`,
+  )
+  return rows[0] ?? null
+}
+
 export async function getLatestQuote(assetId: string): Promise<MarketQuote | null> {
   const rows = await rest<MarketQuote[]>(
     `latest_market_quotes?select=*&asset_id=eq.${encodeURIComponent(assetId)}&limit=1`,
