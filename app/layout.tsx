@@ -18,22 +18,22 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'Asyurian Investment — Analisis Valuasi & Kinerja',
+  title: 'EquityInsight — Fundamental Intelligence',
   description:
-    'Platform analisis valuasi dan kinerja perusahaan untuk investor value investing. Graham Number, DCF, DDM, rasio keuangan, dan margin of safety.',
+    'Platform analisis pasar dan valuasi fundamental untuk investor yang berpikir jangka panjang.',
   generator: 'v0.app',
 }
 
 export const viewport: Viewport = {
   colorScheme: 'dark light',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8f7f4' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+    { media: '(prefers-color-scheme: light)', color: '#f5f7fb' },
+    { media: '(prefers-color-scheme: dark)', color: '#080c16' },
   ],
 }
 
 // Prevents theme flash: applies the stored (or default dark) theme before paint.
-const themeScript = `(function(){try{var t=localStorage.getItem('asyurian-theme')||'dark';var d=document.documentElement;d.classList.remove('dark','light');d.classList.add(t);}catch(e){document.documentElement.classList.add('dark');}})();`
+const themeScript = `(function(){try{var t=localStorage.getItem('equityinsight-theme')||'dark';var d=document.documentElement;d.classList.remove('dark','light');d.classList.add(t);}catch(e){document.documentElement.classList.add('dark');}})();`
 
 export default function RootLayout({
   children,

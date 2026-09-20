@@ -38,11 +38,11 @@ export type MarketCandle = {
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 function assertConfig() {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error('Supabase market data belum dikonfigurasi. Isi NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+    throw new Error('Market data belum terhubung. Tambahkan NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY pada GitHub Actions Secrets/Variables.')
   }
 }
 
@@ -55,7 +55,10 @@ async function rest<T>(path: string): Promise<T> {
     },
     cache: 'no-store',
   })
-  if (!response.ok) throw new Error(`Market data request failed: ${response.status}`)
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    throw new Error(`Market data request gagal (${response.status})${detail ? `: ${detail.slice(0, 160)}` : ''}`)
+  }
   return response.json() as Promise<T>
 }
 
@@ -91,6 +94,9 @@ export async function syncMarketData(symbol?: string) {
     body: JSON.stringify({ symbol }),
     cache: 'no-store',
   })
-  if (!response.ok) throw new Error(`Market sync failed: ${response.status}`)
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    throw new Error(`Market sync gagal (${response.status})${detail ? `: ${detail.slice(0, 160)}` : ''}`)
+  }
   return response.json()
 }

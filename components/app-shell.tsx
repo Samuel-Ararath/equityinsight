@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/valuasi', label: 'Valuasi Perusahaan', icon: Calculator },
   { href: '/kinerja', label: 'Analisis Kinerja', icon: Activity },
   { href: '/saham', label: 'Analisis Saham', icon: TrendingUp },
-  { href: '/data-pasar', label: 'Data Pasar', icon: Database, badge: 'Segera' },
+  { href: '/data-pasar', label: 'Market Terminal', icon: Database, badge: 'Live' },
 ]
 
 const BREADCRUMB_LABELS: Record<string, string> = {
@@ -39,7 +39,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   valuasi: 'Valuasi Perusahaan',
   kinerja: 'Analisis Kinerja',
   saham: 'Analisis Saham',
-  'data-pasar': 'Data Pasar',
+  'data-pasar': 'Market Terminal',
 }
 
 function Brand({ collapsed }: { collapsed?: boolean }) {
@@ -51,10 +51,10 @@ function Brand({ collapsed }: { collapsed?: boolean }) {
       {!collapsed && (
         <span className="flex flex-col leading-tight">
           <span className="font-serif text-base font-semibold text-sidebar-foreground">
-            Asyurian
+            EquityInsight
           </span>
-          <span className="text-[0.7rem] tracking-[0.18em] text-muted-foreground uppercase">
-            Investment
+          <span className="text-[0.65rem] tracking-[0.18em] text-muted-foreground uppercase">
+            Fundamental Intelligence
           </span>
         </span>
       )}
@@ -194,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -204,11 +204,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Menu className="size-5" />
           </button>
           <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
-            <span className="hidden text-muted-foreground sm:inline">Asyurian</span>
+            <span className="hidden text-muted-foreground sm:inline">EquityInsight</span>
             <ChartLine className="hidden size-3.5 text-muted-foreground/50 sm:inline" />
             <span className="font-medium text-foreground">{currentLabel}</span>
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
+            <span className="hidden items-center gap-1.5 text-[0.68rem] font-medium text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-positive shadow-[0_0_10px_var(--positive)]" />Research mode</span>
             <ThemeToggle />
           </div>
         </header>
