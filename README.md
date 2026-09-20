@@ -1,49 +1,53 @@
-# Equity Insight
+# EquityInsight
 
-A modern web platform designed to [insert a brief description here, e.g., track portfolio equity, analyze market trends, and manage financial data efficiently].
+EquityInsight is a fundamental-investing workspace for Indonesian equities, US market context, Treasury yields, commodities, and company valuation scenarios.
 
-## ✨ Features
+## Current modules
 
-* **[Feature 1]:** [e.g., Interactive dashboard for real-time portfolio tracking]
-* **[Feature 2]:** [e.g., Seamless and responsive user interface across all devices]
-* **[Feature 3]:** [e.g., Secure user authentication and data management]
+- **Dashboard** — overview and analysis shortcuts.
+- **Data Pasar** — Supabase-backed market terminal with IDX assets, US indices, US Treasury yields, and commodities.
+- **Valuasi Perusahaan** — Graham Number, DCF/NPV, DDM, PER/PBV, and margin of safety.
+- **Analisis Kinerja** — profitability, solvency, liquidity, and efficiency ratios.
+- **Analisis Saham** — shared financial inputs powering valuation and performance analysis.
 
-## 🛠 Tech Stack
+## Stack
 
-* **Framework:** [Next.js](https://nextjs.org/)
-* **Language:** TypeScript / JavaScript
+- Next.js 16 + React 19
+- TypeScript
+- Tailwind CSS
+- Supabase Database + Edge Functions
+- Yahoo Finance-compatible chart ingestion for market assets
+- FRED series ingestion for US Treasury yields
 
-## 🚀 Getting Started
-
-Follow these instructions to set up and run the project locally on your machine.
-
-### Prerequisites
-
-Make sure you have [Node.js](https://nodejs.org/) and a package manager (npm, yarn, or pnpm) installed on your system.
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/Samuel-Ararath/equityinsight.git](https://github.com/Samuel-Ararath/equityinsight.git)
-
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set these variables in `.env.local` and in the deployment environment:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://ubjljepundgttrohrwou.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-## Learn More
+The dedicated Supabase project is `equityinsight-db` in the Singapore region. It is separate from the existing Personal Web Database project used by the resume site.
 
-To learn more, take a look at the following resources:
+## Market data flow
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+```text
+Market terminal
+  -> Supabase REST / latest_market_quotes + market_candles
+  -> ingest-market-data Edge Function
+  -> Yahoo-compatible market endpoint / FRED public series
+  -> Supabase cache
+```
+
+The UI intentionally labels data as delayed/EOD when the provider is not a licensed real-time feed. A paid exchange-licensed provider can be added later without changing the UI because assets store their provider and provider symbol separately.
+
+## Important disclaimer
+
+Valuation outputs are analytical estimates, not investment advice. Graham, DCF, NPV, ratio benchmarks, and scenario assumptions are models with different assumptions and should not be treated as interchangeable truth.
