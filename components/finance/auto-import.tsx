@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { getLatestFinancialSnapshot, syncFinancialData, FACT_TO_FINANCIAL_FIELD, type FinancialSnapshot } from '@/lib/financial-data'
+import { getFinancialHistory, getLatestFinancialSnapshot, syncFinancialData, FACT_TO_FINANCIAL_FIELD, type FinancialSnapshot } from '@/lib/financial-data'
 import type { FinancialData } from '@/lib/types'
 import { getAssetBySymbol, getLatestQuote } from '@/lib/market-data'
 
@@ -18,6 +18,7 @@ function formatDate(value: string | null | undefined) {
 export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApply: (patch: Partial<FinancialData>) => void }) {
   const [loading, setLoading] = useState(false)
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null)
+  const [history, setHistory] = useState<FinancialSnapshot[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +28,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
     setLoading(true); setError(null); setMessage(null)
     try {
       await syncFinancialData(normalized)
-      const next = await getLatestFinancialSnapshot(normalized)
+      const [next, nextHistory] = await Promise.all([getLatestFinancialSnapshot(normalized), getFinancialHistory(normalized)])
       if (!next) throw new Error('Laporan tersimpan tetapi belum dapat dibaca dari database.')
       const patch: Partial<FinancialData> = {}
       let applied = 0
@@ -40,6 +41,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
       if (quote?.price !== null && quote?.price !== undefined) { patch.hargaSaham = quote.price; applied += 1 }
       onApply(patch)
       setSnapshot(next)
+      setHistory(nextHistory)
       setMessage(`${applied} pos laporan dan harga pasar dipetakan ke formulir valuasi.`)
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Laporan belum dapat diambil.') }
     finally { setLoading(false) }
@@ -57,7 +59,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
       <CardContent className="space-y-3 pt-0">
         {error && <div className="flex items-start gap-2 rounded-lg border border-negative/30 bg-negative/10 p-3 text-xs text-negative"><FileWarning className="mt-0.5 size-4 shrink-0" /><span>{error}</span></div>}
         {message && <div className="flex items-start gap-2 rounded-lg border border-positive/30 bg-positive/10 p-3 text-xs text-positive"><CheckCircle2 className="mt-0.5 size-4 shrink-0" /><span>{message}</span></div>}
-        {snapshot ? <div className="rounded-lg border border-border/80 bg-background/35 p-3"><div className="flex flex-wrap items-center gap-2"><Badge variant={snapshot.confidence === 'verified' ? 'positive' : 'warning'}>{snapshot.confidence === 'verified' ? 'Verified' : 'Estimated'}</Badge><span className="text-sm font-medium">{snapshot.period_label}</span><span className="text-xs text-muted-foreground">{snapshot.facts.length} pos</span></div><div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2"><span>Periode berakhir: <b className="text-foreground">{formatDate(snapshot.period_end)}</b></span><span>Diambil: <b className="text-foreground">{formatDate(snapshot.filed_at)}</b></span></div><div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" />{snapshot.source}{snapshot.source_url && <a href={snapshot.source_url} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-primary hover:underline">Buka sumber <ExternalLink className="size-3" /></a>}</div>{missingFacts.length > 0 && <div className="mt-3 rounded-md border border-yellow-500/25 bg-yellow-500/5 p-2 text-xs text-yellow-200">Belum tersedia dari sumber ini: {missingFacts.join(', ')}. Angka tersebut tetap bisa diisi manual atau diambil dari sumber alternatif.</div>}</div> : <p className={cn('text-xs text-muted-foreground', !symbol.trim() && 'opacity-60')}>Isi kode saham, lalu klik Ambil data. Angka otomatis tetap dapat dikoreksi manual.</p>}
+        {snapshot ? <div className="rounded-lg border border-border/80 bg-background/35 p-3"><div className="flex flex-wrap items-center gap-2"><Badge variant={snapshot.confidence === 'verified' ? 'positive' : 'warning'}>{snapshot.confidence === 'verified' ? 'Verified' : 'Estimated'}</Badge><span className="text-sm font-medium">{snapshot.period_label}</span><span className="text-xs text-muted-foreground">{snapshot.facts.length} pos</span></div><div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2"><span>Periode berakhir: <b className="text-foreground">{formatDate(snapshot.period_end)}</b></span><span>Diambil: <b className="text-foreground">{formatDate(snapshot.filed_at)}</b></span></div><div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" />{snapshot.source}{snapshot.source_url && <a href={snapshot.source_url} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 text-primary hover:underline">Buka sumber <ExternalLink className="size-3" /></a>}</div>{missingFacts.length > 0 && <div className="mt-3 rounded-md border border-yellow-500/25 bg-yellow-500/5 p-2 text-xs text-yellow-200">Belum tersedia dari sumber ini: {missingFacts.join(', ')}. Angka tersebut tetap bisa diisi manual atau diambil dari sumber alternatif.</div>}{history.length > 1 && <div className="mt-4 overflow-x-auto"><p className="mb-2 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">Riwayat laporan yang tersimpan</p><table className="w-full min-w-[520px] text-xs"><thead><tr className="border-b border-border text-left text-muted-foreground"><th className="py-2 pr-4 font-medium">Periode</th><th className="py-2 pr-4 font-medium">Revenue</th><th className="py-2 pr-4 font-medium">Net income</th><th className="py-2 pr-4 font-medium">EPS</th><th className="py-2 font-medium">Sumber</th></tr></thead><tbody>{history.map((item) => { const byKey = Object.fromEntries(item.facts.map((fact) => [fact.metric_key, fact.value])); return <tr key={item.id} className="border-b border-border/60 last:border-0"><td className="py-2 pr-4 font-medium text-foreground">{item.period_label}</td><td className="py-2 pr-4 tabular-nums">{typeof byKey.revenue === 'number' ? new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(byKey.revenue) : '—'}</td><td className="py-2 pr-4 tabular-nums">{typeof byKey.net_income === 'number' ? new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(byKey.net_income) : '—'}</td><td className="py-2 pr-4 tabular-nums">{typeof byKey.eps === 'number' ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(byKey.eps) : '—'}</td><td className="py-2 text-muted-foreground">{item.confidence}</td></tr> })}</tbody></table></div>}</div> : <p className={cn('text-xs text-muted-foreground', !symbol.trim() && 'opacity-60')}>Isi kode saham, lalu klik Ambil data. Angka otomatis tetap dapat dikoreksi manual.</p>}
       </CardContent>
     </Card>
   )

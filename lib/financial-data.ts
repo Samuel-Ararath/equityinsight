@@ -49,12 +49,21 @@ export async function syncFinancialData(symbol: string) {
   return payload as { ok: true; asset: string; source: string; source_url: string | null; period_label: string; period_end: string; facts: number; confidence: FinancialSnapshot['confidence']; fallback?: string | null }
 }
 
+async function loadSnapshots(path: string): Promise<FinancialSnapshot[]> {
+  const snapshots = await rest<Omit<FinancialSnapshot, 'facts'>[]>(path)
+  return Promise.all(snapshots.map(async (snapshot) => ({
+    ...snapshot,
+    facts: await rest<FinancialFact[]>(`financial_facts?select=id,metric_key,metric_label,value,unit,source_tag,confidence,notes&snapshot_id=eq.${encodeURIComponent(snapshot.id)}&order=metric_key.asc`),
+  })))
+}
+
 export async function getLatestFinancialSnapshot(symbol: string): Promise<FinancialSnapshot | null> {
-  const snapshots = await rest<Omit<FinancialSnapshot, 'facts'>[]>(`latest_financial_snapshots?select=id,asset_id,symbol,period_label,period_end,statement_type,currency,source,source_url,filed_at,confidence&symbol=eq.${encodeURIComponent(symbol.trim().toUpperCase())}&limit=1`)
-  const snapshot = snapshots[0]
-  if (!snapshot) return null
-  const facts = await rest<FinancialFact[]>(`financial_facts?select=id,metric_key,metric_label,value,unit,source_tag,confidence,notes&snapshot_id=eq.${encodeURIComponent(snapshot.id)}&order=metric_key.asc`)
-  return { ...snapshot, facts }
+  const snapshots = await loadSnapshots(`latest_financial_snapshots?select=id,asset_id,symbol,period_label,period_end,statement_type,currency,source,source_url,filed_at,confidence&symbol=eq.${encodeURIComponent(symbol.trim().toUpperCase())}&limit=1`)
+  return snapshots[0] ?? null
+}
+
+export async function getFinancialHistory(symbol: string): Promise<FinancialSnapshot[]> {
+  return loadSnapshots(`financial_snapshots?select=id,asset_id,symbol,period_label,period_end,statement_type,currency,source,source_url,filed_at,confidence&symbol=eq.${encodeURIComponent(symbol.trim().toUpperCase())}&order=period_end.desc&limit=10`)
 }
 
 export const FACT_TO_FINANCIAL_FIELD: Record<string, string> = {
