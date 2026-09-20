@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { PageHeader } from '@/components/page-header'
+import { AutoFinancialImport } from '@/components/finance/auto-import'
 import {
   AssumptionsSection,
   FinancialsSection,
@@ -40,8 +41,13 @@ export default function ValuasiPage() {
         {/* Form column */}
         <div className="flex flex-col gap-4">
           <IdentitySection value={identity} onChange={(p) => setIdentity((s) => ({ ...s, ...p }))} />
+          <AutoFinancialImport
+            symbol={identity.kode}
+            onApply={(patch) => setFinancials((current) => ({ ...current, ...patch }))}
+          />
           <FinancialsSection
             value={financials}
+            extended
             onChange={(p) => setFinancials((s) => ({ ...s, ...p }))}
           />
           <AssumptionsSection
