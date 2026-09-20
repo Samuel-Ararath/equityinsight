@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckCircle2, CloudDownload, ExternalLink, FileWarning, LoaderCircle, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function importLatest() {
+  async function importLatest(silent = false) {
     const normalized = symbol.trim().toUpperCase()
     if (!normalized) { setError('Masukkan kode saham terlebih dahulu.'); return }
     setLoading(true); setError(null); setMessage(null)
@@ -42,7 +42,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
       onApply(patch)
       setSnapshot(next)
       setHistory(nextHistory)
-      setMessage(`${applied} pos laporan dan harga pasar dipetakan ke formulir valuasi.`)
+      setMessage(`${applied} pos laporan dan harga pasar dipetakan ke formulir valuasi${silent ? ' (pemeriksaan otomatis)' : ''}.`)
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Laporan belum dapat diambil.') }
     finally { setLoading(false) }
   }
@@ -50,9 +50,18 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
   const requiredFacts = ['net_income', 'shares', 'total_equity', 'total_assets', 'total_debt', 'cash', 'operating_cash_flow', 'capex']
   const missingFacts = snapshot ? requiredFacts.filter((key) => !snapshot.facts.some((fact) => fact.metric_key === key)) : []
 
+  useEffect(() => {
+    const normalized = symbol.trim()
+    if (normalized.length < 2) return
+    const timer = window.setTimeout(() => { void importLatest(true) }, 1200)
+    return () => window.clearTimeout(timer)
+    // The symbol is the only trigger; importLatest intentionally reads the current form symbol.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol])
+
   return (
     <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card">
-      <CardHeader className="flex-row items-start justify-between gap-3">
+      <CardHeader className="flex-col items-start justify-between gap-3 sm:flex-row">
         <div className="flex gap-3"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary"><CloudDownload className="size-5" /></span><div><CardTitle className="text-base">Ambil laporan terbaru</CardTitle><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Cari otomatis dari SEC EDGAR untuk saham AS atau provider publik untuk saham IDX.</p></div></div>
         <Button type="button" size="sm" onClick={() => void importLatest()} disabled={loading || !symbol.trim()}>{loading ? <LoaderCircle className="size-4 animate-spin" /> : <CloudDownload className="size-4" />}{loading ? 'Mengambil…' : 'Ambil data'}</Button>
       </CardHeader>

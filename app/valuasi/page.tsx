@@ -42,7 +42,7 @@ export default function ValuasiPage() {
         title={title}
         description="Ambil laporan terbaru, periksa mapping angka, lalu jalankan Graham Number, DCF, Dividend Discount Model, dan relative valuation dengan transparan."
       />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] xl:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* Form column */}
         <div className="flex flex-col gap-4">
           <IdentitySection value={identity} onChange={(p) => setIdentity((s) => ({ ...s, ...p }))} />
@@ -61,7 +61,7 @@ export default function ValuasiPage() {
           />
         </div>
         {/* Results column (sticky on large screens) */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className="min-w-0 2xl:sticky 2xl:top-20 2xl:self-start">
           <div className="mb-4 flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Siap menghitung?</p>

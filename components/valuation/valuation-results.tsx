@@ -101,8 +101,8 @@ export function ValuationResults({
       </Card>
 
       {/* ---- Margin of Safety summary (most prominent) ---- */}
-      <Card className="overflow-hidden border-gold/25">
-        <div className="flex flex-col items-center gap-6 p-6 md:flex-row md:items-center md:gap-8 md:p-7">
+      <Card className="min-w-0 overflow-hidden border-gold/25">
+        <div className="flex min-w-0 flex-col items-center gap-6 p-6 lg:flex-row lg:items-center lg:gap-8 lg:p-7">
           <MarginGauge result={result} />
           <div className="flex flex-1 flex-col items-center gap-3 text-center md:items-start md:text-left">
             {result.verdict ? (
@@ -120,7 +120,7 @@ export function ValuationResults({
                   Kesimpulan
                 </Badge>
                 <span
-                  className="font-serif text-3xl font-bold tracking-tight text-balance break-words md:text-4xl"
+                  className="max-w-full font-serif text-3xl font-bold tracking-tight text-balance break-words lg:text-4xl"
                   style={{ color }}
                 >
                   {result.verdict}
