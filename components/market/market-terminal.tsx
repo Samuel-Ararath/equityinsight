@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, ArrowUpRight, BarChart3, CandlestickChart, Database, RefreshCw, Search, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,11 @@ const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1mo'] as 
 const TIMEFRAME_LABEL: Record<(typeof TIMEFRAMES)[number], string> = { '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W', '1mo': '1M' }
 
 type Timeframe = (typeof TIMEFRAMES)[number]
+
+// Quotes are refreshed from the Supabase cache every 30 seconds. The heavier
+// provider ingestion is requested at most once per minute to protect sources.
+const QUOTE_REFRESH_MS = 30_000
+const INGEST_REFRESH_MS = 60_000
 
 function formatNumber(value: number | null | undefined, digits = 2) {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—'
@@ -74,6 +79,8 @@ export function MarketTerminal() {
   const [toolkit, setToolkit] = useState<ToolkitState>({ ...DEFAULT_TOOLKIT })
   const [lastRefresh, setLastRefresh] = useState<string | null>(null)
   const [sourceStatus, setSourceStatus] = useState<string | null>(null)
+  const refreshInFlight = useRef(false)
+  const lastIngestAt = useRef(0)
 
   const selected = assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0]
   const selectedQuote = selected ? quotes[selected.id] : undefined
@@ -126,39 +133,65 @@ export function MarketTerminal() {
       setChartLoading(true)
       try {
         let nextCandles = await getCandles(selected.id, timeframe)
-        if (!nextCandles.length) { const syncPayload = await syncMarketData(selected.symbol, timeframe); applySyncStatus(syncPayload); nextCandles = await getCandles(selected.id, timeframe) }
+        if (!nextCandles.length) {
+          const syncPayload = await syncMarketData(selected.symbol, timeframe)
+          applySyncStatus(syncPayload)
+          nextCandles = await getCandles(selected.id, timeframe)
+        }
         if (alive) setCandles(nextCandles)
-      } catch (cause) { if (alive) setError(cause instanceof Error ? cause.message : 'Grafik tidak dapat dimuat.') }
-      finally { if (alive) setChartLoading(false) }
+      } catch (cause) {
+        if (alive) setError(cause instanceof Error ? cause.message : 'Grafik tidak dapat dimuat.')
+      } finally {
+        if (alive) setChartLoading(false)
+      }
     }
     void bootstrap()
-    const interval = window.setInterval(() => { void refreshSelected(true) }, 60000)
-    return () => { alive = false; window.clearInterval(interval) }
+    return () => { alive = false }
   }, [selected?.id, timeframe])
 
+  useEffect(() => {
+    if (!assets.length) return
+    const interval = window.setInterval(() => { void refreshMarketData(true) }, QUOTE_REFRESH_MS)
+    return () => window.clearInterval(interval)
+  }, [assets.length, selected?.id, timeframe])
+
   function applySyncStatus(payload: any) {
-    const result = payload?.results?.[0]
-    if (result?.source_status === 'fallback_yahoo') setSourceStatus(`IDX unavailable · fallback ${result.provider}`)
-    else if (result?.provider === 'idx') setSourceStatus('IDX source · live candidate')
-    else if (result?.provider === 'yahoo') setSourceStatus('Yahoo Finance · delayed')
+    const results = Array.isArray(payload?.results) ? payload.results : []
+    const idxResult = results.find((result: any) => result?.provider === 'idx' && result?.source_status !== 'fallback_yahoo')
+    const fallbackResult = results.find((result: any) => result?.source_status === 'fallback_yahoo')
+    const yahooResult = results.find((result: any) => result?.provider === 'yahoo')
+    if (idxResult) setSourceStatus('IDX source · live candidate')
+    else if (fallbackResult) setSourceStatus(`IDX unavailable · fallback ${fallbackResult.provider}`)
+    else if (yahooResult) setSourceStatus('Yahoo Finance · delayed')
   }
 
-  async function refreshSelected(quiet = false) {
-    if (!selected) return
+  async function refreshMarketData(quiet = false) {
+    if (!selected || refreshInFlight.current) return
+    refreshInFlight.current = true
     if (!quiet) setSyncing(true)
     setError(null)
     try {
-      const syncPayload = await syncMarketData(selected.symbol, timeframe)
-      applySyncStatus(syncPayload)
-      const [quote, nextCandles] = await Promise.all([getLatestQuote(selected.id), getCandles(selected.id, timeframe)])
-      if (quote) setQuotes((current) => ({ ...current, [selected.id]: quote }))
+      const now = Date.now()
+      if (now - lastIngestAt.current >= INGEST_REFRESH_MS) {
+        const syncPayload = await syncMarketData(undefined, '1d')
+        lastIngestAt.current = Date.now()
+        applySyncStatus(syncPayload)
+      }
+      const nextQuotes = await Promise.all(assets.map(async (asset) => [asset.id, await getLatestQuote(asset.id)] as const))
+      setQuotes(Object.fromEntries(nextQuotes.filter((entry): entry is [string, MarketQuote] => Boolean(entry[1]))))
+      const nextCandles = await getCandles(selected.id, timeframe)
       setCandles(nextCandles)
       setLastRefresh(new Date().toISOString())
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Market sync gagal.')
+      if (!quiet) setError(cause instanceof Error ? cause.message : 'Market sync gagal.')
     } finally {
+      refreshInFlight.current = false
       if (!quiet) setSyncing(false)
     }
+  }
+
+  function refreshSelected(quiet = false) {
+    return refreshMarketData(quiet)
   }
 
   return (
@@ -169,22 +202,22 @@ export function MarketTerminal() {
           <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground md:text-4xl">Data Pasar</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Workspace harga dan konteks makro untuk saham IDX, indeks Amerika, Treasury yield, serta komoditas.</p>
         </div>
-        <Button onClick={() => void refreshSelected()} disabled={!selected || syncing} variant="outline">
+        <div className="flex flex-wrap items-center gap-3 lg:justify-end"><span className="text-xs text-muted-foreground">Auto-refresh quote 30 dtk · ingest 60 dtk</span><Button onClick={() => void refreshSelected()} disabled={!selected || syncing} variant="outline">
           <RefreshCw className={cn('size-4', syncing && 'animate-spin')} />
           {syncing ? 'Mengambil data…' : 'Segarkan data'}
-        </Button>
+        </Button></div>
       </div>
 
       {error && <div className="rounded-lg border border-negative/30 bg-negative/10 px-4 py-3 text-sm text-negative">{error}</div>}
 
       <div className="grid min-w-0 gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
-        <Card className="h-fit xl:sticky xl:top-20">
+        <Card className="h-fit 2xl:sticky 2xl:top-20">
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 text-base"><Database className="size-4 text-gold" />Watchlist market</CardTitle>
             <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2"><Search className="size-4 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari simbol atau aset" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></div>
           </CardHeader>
-          <CardContent className="space-y-4 pt-0">
-            {loading ? <p className="px-3 py-4 text-sm text-muted-foreground">Memuat aset…</p> : Object.entries(groups).map(([group, groupAssets]) => <div key={group}><p className="px-3 pb-1 text-[0.68rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase">{group}</p><div className="space-y-1">{groupAssets.map((asset) => <AssetRow key={asset.id} asset={asset} active={asset.id === selected?.id} quote={quotes[asset.id]} onClick={() => setSelectedSymbol(asset.symbol)} />)}</div></div>)}
+          <CardContent className="max-h-[min(60vh,520px)] space-y-4 overflow-y-auto pt-0 pr-2">
+            {loading ? <p className="px-3 py-4 text-sm text-muted-foreground">Memuat aset…</p> : <><div className="grid grid-cols-[minmax(0,1fr)_auto] px-3 pb-1 text-[0.62rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase"><span>Aset</span><span>Harga / 24J</span></div>{Object.entries(groups).map(([group, groupAssets]) => <div key={group}><p className="px-3 pb-1 text-[0.68rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase">{group}</p><div className="space-y-1">{groupAssets.map((asset) => <AssetRow key={asset.id} asset={asset} active={asset.id === selected?.id} quote={quotes[asset.id]} onClick={() => setSelectedSymbol(asset.symbol)} />)}</div></div>)}</>}
           </CardContent>
         </Card>
 
@@ -200,7 +233,7 @@ export function MarketTerminal() {
                 <div className="text-left xl:text-right"><p className="font-serif text-4xl font-semibold tabular-nums text-foreground">{formatPrice(selectedQuote?.price, selected?.currency ?? 'USD')}</p><p className={cn('mt-1 flex items-center gap-1 text-sm tabular-nums xl:justify-end', positive ? 'text-positive' : 'text-negative')}>{positive ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}{selectedQuote?.change_percent === null || selectedQuote?.change_percent === undefined ? 'Belum ada quote' : `${positive ? '+' : ''}${formatNumber(selectedQuote.change_percent)}% hari ini`}</p></div>
               </div>
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3"><div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1">{TIMEFRAMES.map((item) => <button key={item} type="button" onClick={() => setTimeframe(item)} className={cn('rounded-md px-3 py-1.5 text-xs font-medium', timeframe === item ? 'bg-gold/15 text-gold' : 'text-muted-foreground hover:text-foreground')}>{TIMEFRAME_LABEL[item]}</button>)}</div><span className="text-xs text-muted-foreground">Market time: {formatTime(selectedQuote?.market_time)} · fetched: {formatTime(selectedQuote?.fetched_at)}</span></div>
-              <div className="relative mt-4">{chartLoading && <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 text-sm text-muted-foreground">Menyiapkan candle…</div>}<AdvancedMarketChart candles={candles} toolkit={toolkit} /></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span><b className="text-foreground">Hover</b> candle untuk OHLC, volume, dan struktur market.</span><span>{lastRefresh ? `Updated ${formatTime(lastRefresh)}` : 'Auto-refresh setiap 60 detik'}</span></div>
+              <div className="relative mt-4">{chartLoading && <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/70 text-sm text-muted-foreground">Menyiapkan candle…</div>}<AdvancedMarketChart candles={candles} toolkit={toolkit} /></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span><b className="text-foreground">Hover</b> candle untuk OHLC, volume, dan struktur market.</span><span>{lastRefresh ? `Updated ${formatTime(lastRefresh)}` : 'Auto-refresh quote setiap 30 detik'}</span></div>
             </CardContent>
           </Card>
 
