@@ -33,8 +33,10 @@ export type FinancialSnapshot = {
   facts: FinancialFact[]
 }
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+// The publishable key is intentionally safe for browser use; RLS protects the tables.
+// These fallbacks keep Vercel/GitHub Pages usable when build-time env vars were omitted.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ubjljepundgttrohrwou.supabase.co'
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_bw6oAzB7PLadXfY3hcrMtQ_2l5SJasm'
 
 function assertConfig() {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase belum terhubung. Periksa GitHub Actions Variables/Secrets.')
