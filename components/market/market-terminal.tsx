@@ -73,6 +73,7 @@ export function MarketTerminal() {
   const [error, setError] = useState<string | null>(null)
   const [toolkit, setToolkit] = useState<ToolkitState>({ ...DEFAULT_TOOLKIT })
   const [lastRefresh, setLastRefresh] = useState<string | null>(null)
+  const [sourceStatus, setSourceStatus] = useState<string | null>(null)
 
   const selected = assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0]
   const selectedQuote = selected ? quotes[selected.id] : undefined
@@ -125,7 +126,7 @@ export function MarketTerminal() {
       setChartLoading(true)
       try {
         let nextCandles = await getCandles(selected.id, timeframe)
-        if (!nextCandles.length) { await syncMarketData(selected.symbol, timeframe); nextCandles = await getCandles(selected.id, timeframe) }
+        if (!nextCandles.length) { const syncPayload = await syncMarketData(selected.symbol, timeframe); applySyncStatus(syncPayload); nextCandles = await getCandles(selected.id, timeframe) }
         if (alive) setCandles(nextCandles)
       } catch (cause) { if (alive) setError(cause instanceof Error ? cause.message : 'Grafik tidak dapat dimuat.') }
       finally { if (alive) setChartLoading(false) }
@@ -135,12 +136,20 @@ export function MarketTerminal() {
     return () => { alive = false; window.clearInterval(interval) }
   }, [selected?.id, timeframe])
 
+  function applySyncStatus(payload: any) {
+    const result = payload?.results?.[0]
+    if (result?.source_status === 'fallback_yahoo') setSourceStatus(`IDX unavailable · fallback ${result.provider}`)
+    else if (result?.provider === 'idx') setSourceStatus('IDX source · live candidate')
+    else if (result?.provider === 'yahoo') setSourceStatus('Yahoo Finance · delayed')
+  }
+
   async function refreshSelected(quiet = false) {
     if (!selected) return
     if (!quiet) setSyncing(true)
     setError(null)
     try {
-      await syncMarketData(selected.symbol, timeframe)
+      const syncPayload = await syncMarketData(selected.symbol, timeframe)
+      applySyncStatus(syncPayload)
       const [quote, nextCandles] = await Promise.all([getLatestQuote(selected.id), getCandles(selected.id, timeframe)])
       if (quote) setQuotes((current) => ({ ...current, [selected.id]: quote }))
       setCandles(nextCandles)
@@ -185,7 +194,7 @@ export function MarketTerminal() {
             <CardContent className="p-5 md:p-6">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2"><span className="font-serif text-2xl font-semibold text-foreground">{selected?.display_name ?? 'Pilih aset'}</span>{selected && <Badge variant="gold">{selected.symbol}</Badge>}{selected?.is_delayed && <Badge variant="outline">Delayed / EOD</Badge>}</div>
+                  <div className="flex flex-wrap items-center gap-2"><span className="font-serif text-2xl font-semibold text-foreground">{selected?.display_name ?? 'Pilih aset'}</span>{selected && <Badge variant="gold">{selected.symbol}</Badge>}{(selectedQuote?.is_delayed ?? selected?.is_delayed) && <Badge variant="outline">Delayed / EOD</Badge>}{sourceStatus && <Badge variant="outline">{sourceStatus}</Badge>}</div>
                   <p className="mt-1 text-sm text-muted-foreground">{selected?.market} · {selected?.asset_class} · {selected?.provider}</p>
                 </div>
                 <div className="text-left xl:text-right"><p className="font-serif text-4xl font-semibold tabular-nums text-foreground">{formatPrice(selectedQuote?.price, selected?.currency ?? 'USD')}</p><p className={cn('mt-1 flex items-center gap-1 text-sm tabular-nums xl:justify-end', positive ? 'text-positive' : 'text-negative')}>{positive ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}{selectedQuote?.change_percent === null || selectedQuote?.change_percent === undefined ? 'Belum ada quote' : `${positive ? '+' : ''}${formatNumber(selectedQuote.change_percent)}% hari ini`}</p></div>
