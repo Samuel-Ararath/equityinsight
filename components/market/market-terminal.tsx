@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Activity, ArrowUpRight, BarChart3, CandlestickChart, Database, RefreshCw, Search, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react'
+import { Activity, ArrowUpRight, BarChart3, CandlestickChart, Database, RefreshCw, Search, ShieldCheck, Star, TrendingDown, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +24,8 @@ const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w', '1mo'] as 
 const TIMEFRAME_LABEL: Record<(typeof TIMEFRAMES)[number], string> = { '1m': '1m', '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W', '1mo': '1M' }
 
 type Timeframe = (typeof TIMEFRAMES)[number]
+type MarketTab = 'Favorit' | 'Major' | 'Logam' | 'Crypto' | 'Indeks' | 'Saham'
+const MARKET_TABS: MarketTab[] = ['Favorit', 'Major', 'Logam', 'Crypto', 'Indeks', 'Saham']
 
 // Quotes are refreshed from the Supabase cache every 30 seconds. The heavier
 // provider ingestion is requested at most once per minute to protect sources.
@@ -47,22 +49,33 @@ function formatTime(value: string | null | undefined) {
   return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function AssetRow({ asset, active, quote, onClick }: { asset: MarketAsset; active: boolean; quote?: MarketQuote; onClick: () => void }) {
+function AssetRow({ asset, active, favorite, quote, onClick, onToggleFavorite }: { asset: MarketAsset; active: boolean; favorite: boolean; quote?: MarketQuote; onClick: () => void; onToggleFavorite: () => void }) {
   const change = quote?.change_percent ?? null
   return (
-    <button type="button" onClick={onClick} className={cn('flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent', active && 'bg-gold/10 ring-1 ring-gold/25')}>
-      <span className="min-w-0">
+    <div className={cn('flex w-full items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-accent', active && 'bg-gold/10 ring-1 ring-gold/25')}>
+      <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
         <span className="block truncate text-sm font-semibold text-foreground">{asset.symbol}</span>
         <span className="block truncate text-xs text-muted-foreground">{asset.display_name}</span>
-      </span>
-      <span className="shrink-0 text-right">
+      </button>
+      <button type="button" onClick={onToggleFavorite} className="rounded p-1 text-muted-foreground hover:text-gold" aria-label={favorite ? `Hapus ${asset.symbol} dari favorit` : `Tambah ${asset.symbol} ke favorit`}>
+        <Star className={cn('size-3.5', favorite && 'fill-gold text-gold')} />
+      </button>
+      <button type="button" onClick={onClick} className="shrink-0 text-right">
         <span className="block text-sm tabular-nums text-foreground">{formatPrice(quote?.price, asset.currency)}</span>
         <span className={cn('block text-xs tabular-nums', change === null ? 'text-muted-foreground' : change >= 0 ? 'text-positive' : 'text-negative')}>
           {change === null ? '—' : `${change >= 0 ? '+' : ''}${formatNumber(change)}%`}
         </span>
-      </span>
-    </button>
+      </button>
+    </div>
   )
+}
+
+function marketTabFor(asset: MarketAsset): MarketTab {
+  if (asset.asset_class === 'CRYPTO') return 'Crypto'
+  if (asset.asset_class === 'COMMODITY') return 'Logam'
+  if (asset.asset_class === 'INDEX' || asset.asset_class === 'IDX_INDEX') return 'Indeks'
+  if (asset.asset_class === 'IDX_STOCK' || asset.asset_class === 'US_STOCK' || asset.market === 'IDX') return 'Saham'
+  return 'Major'
 }
 
 export function MarketTerminal() {
@@ -72,6 +85,8 @@ export function MarketTerminal() {
   const [candles, setCandles] = useState<MarketCandle[]>([])
   const [timeframe, setTimeframe] = useState<Timeframe>('1d')
   const [query, setQuery] = useState('')
+  const [marketTab, setMarketTab] = useState<MarketTab>('Favorit')
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [chartLoading, setChartLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -90,11 +105,10 @@ export function MarketTerminal() {
     if (!normalized) return assets
     return assets.filter((asset) => `${asset.symbol} ${asset.display_name} ${asset.market} ${asset.asset_class}`.toLowerCase().includes(normalized))
   }, [assets, query])
-  const groups = useMemo(() => filteredAssets.reduce<Record<string, MarketAsset[]>>((acc, asset) => {
-    const key = asset.asset_class === 'CRYPTO' ? 'Crypto curated' : asset.market === 'IDX' ? 'Indonesia' : asset.asset_class === 'TREASURY_YIELD' ? 'U.S. Treasury' : 'Amerika & Global'
-    acc[key] = [...(acc[key] ?? []), asset]
-    return acc
-  }, {}), [filteredAssets])
+  const visibleAssets = useMemo(() => filteredAssets.filter((asset) => {
+    if (marketTab === 'Favorit') return favoriteIds.includes(asset.id)
+    return marketTabFor(asset) === marketTab
+  }), [filteredAssets, favoriteIds, marketTab])
 
   async function loadAssets() {
     setLoading(true)
@@ -102,6 +116,11 @@ export function MarketTerminal() {
     try {
       const nextAssets = await listMarketAssets()
       setAssets(nextAssets)
+      setFavoriteIds((current) => {
+        if (current.length) return current.filter((id) => nextAssets.some((asset) => asset.id === id))
+        const curated = nextAssets.filter((asset) => ['IHSG', 'BBCA', 'BTC', 'ETH', 'XAU', 'XAUUSD', 'DJI', '^DJI'].includes(asset.symbol)).map((asset) => asset.id)
+        return curated.length ? curated : nextAssets.slice(0, 5).map((asset) => asset.id)
+      })
       const nextQuotes = await Promise.all(nextAssets.map(async (asset) => [asset.id, await getLatestQuote(asset.id)] as const))
       setQuotes(Object.fromEntries(nextQuotes.filter((entry): entry is [string, MarketQuote] => Boolean(entry[1]))))
       if (!nextAssets.some((asset) => asset.symbol === selectedSymbol) && nextAssets[0]) setSelectedSymbol(nextAssets[0].symbol)
@@ -214,10 +233,11 @@ export function MarketTerminal() {
         <Card className="h-fit 2xl:sticky 2xl:top-20">
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 text-base"><Database className="size-4 text-gold" />Watchlist market</CardTitle>
+            <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">{MARKET_TABS.map((tab) => <button key={tab} type="button" onClick={() => setMarketTab(tab)} className={cn('shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors', marketTab === tab ? 'bg-gold/15 text-gold' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>{tab}</button>)}</div>
             <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2"><Search className="size-4 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari simbol atau aset" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></div>
           </CardHeader>
-          <CardContent className="max-h-[min(60vh,520px)] space-y-4 overflow-y-auto pt-0 pr-2">
-            {loading ? <p className="px-3 py-4 text-sm text-muted-foreground">Memuat aset…</p> : <><div className="grid grid-cols-[minmax(0,1fr)_auto] px-3 pb-1 text-[0.62rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase"><span>Aset</span><span>Harga / 24J</span></div>{Object.entries(groups).map(([group, groupAssets]) => <div key={group}><p className="px-3 pb-1 text-[0.68rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase">{group}</p><div className="space-y-1">{groupAssets.map((asset) => <AssetRow key={asset.id} asset={asset} active={asset.id === selected?.id} quote={quotes[asset.id]} onClick={() => setSelectedSymbol(asset.symbol)} />)}</div></div>)}</>}
+          <CardContent className="max-h-[min(60vh,520px)] overflow-y-auto pt-0 pr-2">
+            {loading ? <p className="px-3 py-4 text-sm text-muted-foreground">Memuat aset…</p> : visibleAssets.length ? <div className="space-y-1"><div className="grid grid-cols-[minmax(0,1fr)_auto] px-2 pb-1 text-[0.62rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase"><span>{marketTab}</span><span>Harga / 24J</span></div>{visibleAssets.map((asset) => <AssetRow key={asset.id} asset={asset} active={asset.id === selected?.id} favorite={favoriteIds.includes(asset.id)} quote={quotes[asset.id]} onClick={() => setSelectedSymbol(asset.symbol)} onToggleFavorite={() => setFavoriteIds((current) => current.includes(asset.id) ? current.filter((id) => id !== asset.id) : [...current, asset.id])} />)}</div> : <p className="px-3 py-6 text-sm text-muted-foreground">Belum ada aset di tab {marketTab}. Tandai aset dengan bintang untuk memasukkannya ke Favorit.</p>}
           </CardContent>
         </Card>
 
@@ -244,7 +264,7 @@ export function MarketTerminal() {
             <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Sumber</p><p className="mt-2 text-lg font-semibold capitalize">{selectedQuote?.provider ?? selected?.provider ?? '—'}</p></CardContent></Card>
           </div>
 
-          <Card className="border-gold/20 bg-gradient-to-br from-card to-gold/5"><CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between"><div className="flex gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold"><CandlestickChart className="size-5" /></span><div><h2 className="font-serif text-lg font-semibold text-foreground">Fundamental & valuation layer</h2><p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">Grafik market berada di atas. Di halaman valuasi, data laporan keuangan dapat dipakai untuk menghitung DCF/NPV, Graham Number, ROA, ROE, break-even point, dan skenario nilai wajar.</p></div></div><Button nativeButton={false} render={<Link href="/valuasi" />} variant="outline">Buka valuasi <ArrowUpRight className="size-4" /></Button></CardContent></Card>
+          <Card className="border-gold/20 bg-gradient-to-br from-card to-gold/5"><CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between"><div className="flex gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gold/10 text-gold"><CandlestickChart className="size-5" /></span><div><h2 className="font-serif text-lg font-semibold text-foreground">Capital project & allocation layer</h2><p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">Grafik market berada di atas. Di Lab Proyek, RAB, CAPEX, OPEX, BEP, NPV, IRR, MIRR, dan skenario arus kas dapat diuji sebelum modal dialokasikan.</p></div></div><Button nativeButton={false} render={<Link href="/valuasi" />} variant="outline">Buka lab proyek <ArrowUpRight className="size-4" /></Button></CardContent></Card>
 
           <div className="grid gap-4 md:grid-cols-3"><Card><CardContent className="flex gap-3 p-4"><Activity className="mt-0.5 size-4 text-gold" /><div><p className="text-sm font-medium">Refresh aman</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Data disimpan di cache Supabase, bukan dipanggil ulang tanpa batas dari browser.</p></div></CardContent></Card><Card><CardContent className="flex gap-3 p-4"><ShieldCheck className="mt-0.5 size-4 text-gold" /><div><p className="text-sm font-medium">Sumber transparan</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Provider dan status delayed ditampilkan pada setiap aset.</p></div></CardContent></Card><Card><CardContent className="flex gap-3 p-4"><BarChart3 className="mt-0.5 size-4 text-gold" /><div><p className="text-sm font-medium">Siap diperluas</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Candle, quote, dan hasil valuasi memiliki tabel terpisah untuk analisis historis.</p></div></CardContent></Card></div>
         </div>
