@@ -153,7 +153,7 @@ export function MarketTerminal() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="mb-2 text-xs font-medium tracking-[0.2em] text-gold uppercase">Market terminal</p>
@@ -168,7 +168,7 @@ export function MarketTerminal() {
 
       {error && <div className="rounded-lg border border-negative/30 bg-negative/10 px-4 py-3 text-sm text-negative">{error}</div>}
 
-      <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 2xl:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="h-fit xl:sticky xl:top-20">
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 text-base"><Database className="size-4 text-gold" />Watchlist market</CardTitle>
@@ -181,7 +181,7 @@ export function MarketTerminal() {
 
         <div className="min-w-0 space-y-4">
           <AnalysisToolkit value={toolkit} onChange={setToolkit} />
-          <Card className="overflow-hidden border-gold/20">
+          <Card className="min-w-0 overflow-hidden border-gold/20">
             <CardContent className="p-5 md:p-6">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div>

@@ -17,4 +17,4 @@ export function AnalysisToolkit({ value, onChange }: { value: ToolkitState; onCh
   </CardShell>
 }
 
-function CardShell({ children }: { children: React.ReactNode }) { return <div className="overflow-hidden rounded-xl border border-border bg-card premium-card">{children}</div> }
+function CardShell({ children }: { children: React.ReactNode }) { return <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-border bg-card premium-card">{children}</div> }
