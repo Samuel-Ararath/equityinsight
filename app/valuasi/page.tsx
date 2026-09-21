@@ -12,6 +12,7 @@ import {
 } from '@/components/finance/sections'
 import { ValuationResults } from '@/components/valuation/valuation-results'
 import { runValuation } from '@/lib/valuation'
+import type { FinancialDataQuality } from '@/lib/financial-data'
 import {
   DEFAULT_ASSUMPTIONS,
   EMPTY_FINANCIALS,
@@ -25,9 +26,10 @@ export default function ValuasiPage() {
   const [identity, setIdentity] = useState<CompanyIdentity>(EMPTY_IDENTITY)
   const [financials, setFinancials] = useState<FinancialData>(EMPTY_FINANCIALS)
   const [assumptions, setAssumptions] = useState<ValuationAssumptions>(DEFAULT_ASSUMPTIONS)
+  const [quality, setQuality] = useState<FinancialDataQuality | undefined>(undefined)
   const [calculation, setCalculation] = useState({ financials: EMPTY_FINANCIALS, assumptions: DEFAULT_ASSUMPTIONS })
 
-  const result = useMemo(() => runValuation(calculation.financials, calculation.assumptions), [calculation])
+  const result = useMemo(() => runValuation(calculation.financials, calculation.assumptions, quality), [calculation, quality])
 
   function runCalculation() {
     setCalculation({ financials: { ...financials }, assumptions: { ...assumptions } })
@@ -50,6 +52,7 @@ export default function ValuasiPage() {
           <AutoFinancialImport
             symbol={identity.kode}
             onApply={(patch) => setFinancials((current) => ({ ...current, ...patch }))}
+            onQuality={setQuality}
           />
           <ResearchIntegrityCard />
           <FinancialsSection

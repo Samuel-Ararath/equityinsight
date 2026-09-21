@@ -1,4 +1,5 @@
 import type { FinancialData, ValuationAssumptions } from '@/lib/types'
+import type { FinancialDataQuality } from '@/lib/financial-data'
 
 // Formula engine: monetary inputs must use the same currency and period.
 // A result is NaN when its prerequisites are missing or the model is invalid.
@@ -130,12 +131,16 @@ export function calcPBVValue(bvps: number, pbvSektor: number): number {
   return pbvSektor * bvps
 }
 
-function blankRecommendation(): Recommendation {
-  return { action: 'NO_SIGNAL', rationale: 'Data harga dan nilai wajar belum cukup untuk membuat sinyal.', upside: NaN, buyZoneLow: NaN, buyZoneHigh: NaN, takeProfit: NaN, stopLoss: NaN, sellZoneLow: NaN, sellZoneHigh: NaN, shortBias: false, shortEntryLow: NaN, shortEntryHigh: NaN, coverTarget: NaN, shortStop: NaN }
+function blankRecommendation(reason = 'Data harga dan nilai wajar belum cukup untuk membuat sinyal.'): Recommendation {
+  return { action: 'NO_SIGNAL', rationale: reason, upside: NaN, buyZoneLow: NaN, buyZoneHigh: NaN, takeProfit: NaN, stopLoss: NaN, sellZoneLow: NaN, sellZoneHigh: NaN, shortBias: false, shortEntryLow: NaN, shortEntryHigh: NaN, coverTarget: NaN, shortStop: NaN }
 }
 
 /** Heuristic levels are decision-support zones, not guaranteed prices or trade execution. */
-export function buildRecommendation(fairValue: number, currentPrice: number): Recommendation {
+export function buildRecommendation(fairValue: number, currentPrice: number, quality?: FinancialDataQuality): Recommendation {
+  if (quality && (!quality.complete || !['verified', 'manual'].includes(quality.confidence))) {
+    const missing = quality.missingFields.length ? ` Pos belum tersedia: ${quality.missingFields.join(', ')}.` : ''
+    return blankRecommendation(`Sinyal ditahan karena kualitas data belum memadai (${quality.confidence}).${missing}`)
+  }
   if (!ok(fairValue) || fairValue <= 0 || !ok(currentPrice) || currentPrice <= 0) return blankRecommendation()
   const upside = ((fairValue - currentPrice) / currentPrice) * 100
   const shortBias = upside <= -20
@@ -151,7 +156,7 @@ export function buildRecommendation(fairValue: number, currentPrice: number): Re
   }
 }
 
-export function runValuation(f: FinancialData, a: ValuationAssumptions): ValuationResult {
+export function runValuation(f: FinancialData, a: ValuationAssumptions, quality?: FinancialDataQuality): ValuationResult {
   const eps = calcEPS(f)
   const bvps = calcBVPS(f)
   const grahamNumber = calcGrahamNumber(eps, bvps)
@@ -177,13 +182,14 @@ export function runValuation(f: FinancialData, a: ValuationAssumptions): Valuati
   const averageFairValue = fairValues.length ? fairValues.reduce((sum, item) => sum + item.value, 0) / fairValues.length : NaN
   let marginOfSafety = NaN
   let verdict: ValuationResult['verdict'] = null
-  if (ok(averageFairValue) && averageFairValue > 0 && ok(f.hargaSaham) && f.hargaSaham > 0) {
+  const qualityBlocked = quality && (!quality.complete || !['verified', 'manual'].includes(quality.confidence))
+  if (!qualityBlocked && ok(averageFairValue) && averageFairValue > 0 && ok(f.hargaSaham) && f.hargaSaham > 0) {
     marginOfSafety = ((averageFairValue - f.hargaSaham) / averageFairValue) * 100
     if (marginOfSafety > 30) verdict = 'UNDERVALUED'
     else if (marginOfSafety >= 10) verdict = 'FAIR VALUE'
     else verdict = 'OVERVALUED'
   }
-  return { eps, bvps, grahamNumber, grahamDefensiveValue, dcfPerShare: dcf.perShare, ddmPerShare, earningsPowerValue, residualIncomeValue, assetValueProxy, perValue, pbvValue, freeCashFlow: dcf.freeCashFlow, enterprisePV: dcf.enterprisePV, terminalValuePV: dcf.terminalValuePV, equityValue: dcf.equityValue, fairValues, averageFairValue, marginOfSafety, verdict, recommendation: buildRecommendation(averageFairValue, f.hargaSaham) }
+  return { eps, bvps, grahamNumber, grahamDefensiveValue, dcfPerShare: dcf.perShare, ddmPerShare, earningsPowerValue, residualIncomeValue, assetValueProxy, perValue, pbvValue, freeCashFlow: dcf.freeCashFlow, enterprisePV: dcf.enterprisePV, terminalValuePV: dcf.terminalValuePV, equityValue: dcf.equityValue, fairValues, averageFairValue, marginOfSafety, verdict, recommendation: buildRecommendation(averageFairValue, f.hargaSaham, quality) }
 }
 
 export function upsideVsPrice(fairValue: number, price: number): number {

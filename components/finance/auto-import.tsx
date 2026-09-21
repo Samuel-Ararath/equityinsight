@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { getFinancialHistory, getLatestFinancialSnapshot, syncFinancialData, FACT_TO_FINANCIAL_FIELD, type FinancialSnapshot } from '@/lib/financial-data'
+import { FINANCIAL_FACT_LABELS, getFinancialHistory, getLatestFinancialSnapshot, syncFinancialData, FACT_TO_FINANCIAL_FIELD, REQUIRED_FINANCIAL_FACTS, type FinancialDataQuality, type FinancialSnapshot } from '@/lib/financial-data'
 import type { FinancialData } from '@/lib/types'
 import { getAssetBySymbol, getLatestQuote } from '@/lib/market-data'
 
@@ -15,7 +15,7 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(value))
 }
 
-export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApply: (patch: Partial<FinancialData>) => void }) {
+export function AutoFinancialImport({ symbol, onApply, onQuality }: { symbol: string; onApply: (patch: Partial<FinancialData>) => void; onQuality: (quality: FinancialDataQuality) => void }) {
   const [loading, setLoading] = useState(false)
   const [snapshot, setSnapshot] = useState<FinancialSnapshot | null>(null)
   const [history, setHistory] = useState<FinancialSnapshot[]>([])
@@ -39,6 +39,8 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
       const asset = await getAssetBySymbol(normalized)
       const quote = asset ? await getLatestQuote(asset.id) : null
       if (quote?.price !== null && quote?.price !== undefined) { patch.hargaSaham = quote.price; applied += 1 }
+      const missingKeys = REQUIRED_FINANCIAL_FACTS.filter((key) => !next.facts.some((fact) => fact.metric_key === key))
+      onQuality({ complete: missingKeys.length === 0, missingFields: missingKeys.map((key) => FINANCIAL_FACT_LABELS[key] ?? key), confidence: next.confidence, source: next.source, periodEnd: next.period_end, fetchedAt: new Date().toISOString() })
       onApply(patch)
       setSnapshot(next)
       setHistory(nextHistory)
@@ -47,8 +49,7 @@ export function AutoFinancialImport({ symbol, onApply }: { symbol: string; onApp
     finally { setLoading(false) }
   }
 
-  const requiredFacts = ['net_income', 'shares', 'total_equity', 'total_assets', 'total_debt', 'cash', 'operating_cash_flow', 'capex']
-  const missingFacts = snapshot ? requiredFacts.filter((key) => !snapshot.facts.some((fact) => fact.metric_key === key)) : []
+  const missingFacts = snapshot ? REQUIRED_FINANCIAL_FACTS.filter((key) => !snapshot.facts.some((fact) => fact.metric_key === key)).map((key) => FINANCIAL_FACT_LABELS[key] ?? key) : []
 
   useEffect(() => {
     const normalized = symbol.trim()

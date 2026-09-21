@@ -9,6 +9,15 @@ export type FinancialFact = {
   notes: string | null
 }
 
+export type FinancialDataQuality = {
+  complete: boolean
+  missingFields: string[]
+  confidence: 'verified' | 'estimated' | 'needs_review' | 'manual'
+  source: string
+  periodEnd: string | null
+  fetchedAt: string | null
+}
+
 export type FinancialSnapshot = {
   id: string
   asset_id: string
@@ -68,4 +77,9 @@ export async function getFinancialHistory(symbol: string): Promise<FinancialSnap
 
 export const FACT_TO_FINANCIAL_FIELD: Record<string, string> = {
   net_income: 'labaBersih', shares: 'sahamBeredar', total_equity: 'totalEkuitas', total_assets: 'totalAset', total_debt: 'totalUtang', cash: 'kas', operating_cash_flow: 'arusKasOperasi', capex: 'capex', dividends_per_share: 'dividenPerSaham', revenue: 'pendapatan', gross_profit: 'labaKotor', operating_income: 'labaOperasi', interest_expense: 'bebanBunga', current_assets: 'asetLancar', current_liabilities: 'liabilitasLancar',
+}
+
+export const REQUIRED_FINANCIAL_FACTS = ['net_income', 'shares', 'total_equity', 'total_assets', 'total_debt', 'cash', 'operating_cash_flow', 'capex'] as const
+export const FINANCIAL_FACT_LABELS: Record<string, string> = {
+  net_income: 'laba bersih', shares: 'saham beredar', total_equity: 'ekuitas', total_assets: 'aset', total_debt: 'utang', cash: 'kas', operating_cash_flow: 'arus kas operasi', capex: 'capex',
 }
