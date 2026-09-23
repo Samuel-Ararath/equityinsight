@@ -143,7 +143,30 @@ function BacktestSection({ report, costInput, onCostChange }: { report: QuantBac
         <div className="rounded-lg border border-border bg-background/45 p-3"><p className="text-[0.68rem] text-muted-foreground">Sumber / adjusted close</p><p className="mt-1 text-sm font-medium">{sourceLabel}</p><p className="mt-0.5 text-[0.68rem] text-muted-foreground">{adjustedPercent}% baris terisi · {report.delayedBars} delayed</p></div>
         <div className="rounded-lg border border-border bg-background/45 p-3"><p className="text-[0.68rem] text-muted-foreground">Biaya yang dipakai</p><p className="mt-1 text-sm font-medium">{report.oneWayCostBps === null ? 'Belum dimasukkan · gross' : `${number(report.oneWayCostBps, 1)} bps/sisi`}</p></div>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="space-y-2 md:hidden">
+        {rows.map(({ strategy, side }) => {
+          const stats = side.stats
+          const sideName = side.side === 'LONG' ? 'Long' : side.side === 'SHORT' ? 'Short' : side.side === 'LONG_SPREAD' ? 'Long spread' : 'Short spread'
+          const displayedReturn = stats.averageReturn
+          return <div key={`mobile-${strategy.kind}-${side.side}`} className="rounded-lg border border-border bg-background/35 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div><p className="text-xs font-semibold">{strategy.name}</p><p className="mt-0.5 text-[0.68rem] text-muted-foreground">{sideName}</p></div>
+              <p className="shrink-0 text-right text-xs font-medium tabular-nums">{stats.count} trade{stats.count === 1 ? '' : 's'}<span className="block text-[0.68rem] text-muted-foreground">{stats.count ? `${stats.wins} menang` : 'belum ada trade'}</span></p>
+            </div>
+            <div className="mt-2 border-t border-border pt-2">
+              <p className="text-[0.68rem] text-muted-foreground">Hit rate OOS · CI Wilson 95%</p>
+              <p className="mt-0.5 text-xs font-medium tabular-nums">{hitRate(stats, useNet)}</p>
+              {stats.count > 0 && stats.count < 30 && <p className="mt-0.5 text-[0.65rem] text-warning">Sampel tipis; hanya deskriptif, bukan peluang masa depan.</p>}
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 border-t border-border pt-2 text-[0.68rem]">
+              <div><p className="text-muted-foreground">Rata-rata / trade</p><p className="mt-0.5 font-medium tabular-nums">{displayedReturn === null ? '—' : `${number(displayedReturn * 100, 2)}%`}</p></div>
+              <div><p className="text-muted-foreground">Profit factor</p><p className="mt-0.5 font-medium tabular-nums">{stats.profitFactor === null ? stats.count && stats.wins === stats.count ? '∞*' : '—' : number(stats.profitFactor, 2)}</p></div>
+              <div><p className="text-muted-foreground">DD trade</p><p className="mt-0.5 font-medium tabular-nums">{stats.maxDrawdown === null ? '—' : `${number(stats.maxDrawdown * 100, 2)}%`}</p></div>
+            </div>
+          </div>
+        })}
+      </div>
+      <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
         <table className="w-full min-w-[770px] text-left text-xs">
           <thead className="bg-muted/55 text-muted-foreground"><tr><th className="px-3 py-2.5 font-medium">Strategi / arah</th><th className="px-3 py-2.5 text-right font-medium">Trade</th><th className="px-3 py-2.5 font-medium">Hit rate OOS</th><th className="px-3 py-2.5 text-right font-medium">Rata-rata / trade</th><th className="px-3 py-2.5 text-right font-medium">Profit factor</th><th className="px-3 py-2.5 text-right font-medium">DD antar-trade</th></tr></thead>
           <tbody>{rows.map(({ strategy, side }) => {
