@@ -34,7 +34,10 @@ export type MarketCandle = {
   high: number
   low: number
   close: number
+  adjusted_close?: number | null
   volume: number | null
+  provider?: string
+  is_delayed?: boolean | null
 }
 
 // The publishable key is intentionally safe for browser use; RLS protects the tables.
@@ -86,9 +89,18 @@ export async function getLatestQuote(assetId: string): Promise<MarketQuote | nul
 
 export async function getCandles(assetId: string, timeframe = '1d'): Promise<MarketCandle[]> {
   const rows = await rest<MarketCandle[]>(
-    `market_candles?select=candle_time,open,high,low,close,volume&asset_id=eq.${encodeURIComponent(assetId)}&timeframe=eq.${timeframe}&order=candle_time.desc&limit=365`,
+    `market_candles?select=candle_time,open,high,low,close,adjusted_close,volume,provider,is_delayed&asset_id=eq.${encodeURIComponent(assetId)}&timeframe=eq.${timeframe}&order=candle_time.desc&limit=1000`,
   )
-  return rows.reverse()
+  // Daily data can contain both a delayed history provider and a live candidate.
+  // Keep one observation per day, preferring non-delayed and adjusted records.
+  const byTime = new Map<string, MarketCandle>()
+  for (const row of rows) {
+    const key = timeframe === '1d' ? row.candle_time.slice(0, 10) : row.candle_time
+    const current = byTime.get(key)
+    const score = (value: MarketCandle) => Number(value.is_delayed === false) * 2 + Number(value.adjusted_close !== null && value.adjusted_close !== undefined)
+    if (!current || score(row) > score(current) || (score(row) === score(current) && row.candle_time > current.candle_time)) byTime.set(key, row)
+  }
+  return [...byTime.values()].sort((a, b) => Date.parse(a.candle_time) - Date.parse(b.candle_time))
 }
 
 export async function syncMarketData(symbol?: string, timeframe = '1d') {
