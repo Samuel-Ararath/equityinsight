@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   Activity,
+  BrainCircuit,
   Building2,
   ChartLine,
   Database,
@@ -20,12 +21,15 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
 
-type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }>; badge?: string }
+type NavItem = { href: string; label: string; icon: ComponentType<{ className?: string }>; badge?: string; child?: boolean }
 type NavGroup = { label: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
   { label: 'Command center', items: [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
-  { label: 'Markets', items: [{ href: '/data-pasar', label: 'Market Terminal', icon: Database, badge: 'Live' }] },
+  { label: 'Markets', items: [
+    { href: '/data-pasar', label: 'Market Terminal', icon: Database, badge: 'Live' },
+    { href: '/quant-lab', label: 'Quant Lab', icon: BrainCircuit, child: true },
+  ] },
   { label: 'Securities & research', items: [
     { href: '/saham', label: 'Analisis Saham', icon: TrendingUp },
     { href: '/kinerja', label: 'Fundamental & Kinerja', icon: Activity },
@@ -39,6 +43,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   kinerja: 'Fundamental & Kinerja',
   saham: 'Analisis Saham',
   'data-pasar': 'Market Terminal',
+  'quant-lab': 'Model Kuantitatif',
 }
 
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
@@ -51,7 +56,7 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 function NavLinks({ pathname, collapsed, onNavigate }: { pathname: string; collapsed?: boolean; onNavigate?: () => void }) {
-  return <nav className="space-y-5">{NAV_GROUPS.map((group) => <div key={group.label}><p className={cn('mb-2 px-3 text-[0.62rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase', collapsed && 'sr-only')}>{group.label}</p><div className="flex flex-col gap-1">{group.items.map((item) => { const active = pathname === item.href || pathname.startsWith(item.href + '/'); const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={onNavigate} title={collapsed ? item.label : undefined} className={cn('group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors', collapsed && 'justify-center px-0', active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground')}><span className={cn('flex items-center justify-center transition-colors', active ? 'text-gold' : 'text-muted-foreground group-hover:text-sidebar-foreground')}><Icon className="size-[18px]" /></span>{!collapsed && <span className="flex flex-1 items-center justify-between gap-2">{item.label}{item.badge && <Badge variant="gold" className="px-1.5 py-0 text-[0.65rem]">{item.badge}</Badge>}</span>}</Link> })}</div></div>)}</nav>
+  return <nav className="space-y-5">{NAV_GROUPS.map((group) => <div key={group.label}><p className={cn('mb-2 px-3 text-[0.62rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase', collapsed && 'sr-only')}>{group.label}</p><div className="flex flex-col gap-1">{group.items.map((item) => { const active = pathname === item.href || pathname.startsWith(item.href + '/'); const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={onNavigate} title={collapsed ? item.label : undefined} className={cn('group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors', collapsed && 'justify-center px-0', !collapsed && item.child && 'ml-3 border-l border-sidebar-border pl-3', active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground')}><span className={cn('flex items-center justify-center transition-colors', active ? 'text-gold' : 'text-muted-foreground group-hover:text-sidebar-foreground')}><Icon className="size-[18px]" /></span>{!collapsed && <span className="flex flex-1 items-center justify-between gap-2">{item.label}{item.badge && <Badge variant="gold" className="px-1.5 py-0 text-[0.65rem]">{item.badge}</Badge>}</span>}</Link> })}</div></div>)}</nav>
 }
 
 export function AppShell({ children }: { children: ReactNode }) {

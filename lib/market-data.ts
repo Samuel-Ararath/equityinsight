@@ -85,9 +85,10 @@ export async function getLatestQuote(assetId: string): Promise<MarketQuote | nul
 }
 
 export async function getCandles(assetId: string, timeframe = '1d'): Promise<MarketCandle[]> {
-  return rest<MarketCandle[]>(
-    `market_candles?select=candle_time,open,high,low,close,volume&asset_id=eq.${encodeURIComponent(assetId)}&timeframe=eq.${timeframe}&order=candle_time.asc&limit=365`,
+  const rows = await rest<MarketCandle[]>(
+    `market_candles?select=candle_time,open,high,low,close,volume&asset_id=eq.${encodeURIComponent(assetId)}&timeframe=eq.${timeframe}&order=candle_time.desc&limit=365`,
   )
+  return rows.reverse()
 }
 
 export async function syncMarketData(symbol?: string, timeframe = '1d') {
