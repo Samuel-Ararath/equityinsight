@@ -35,7 +35,7 @@ function adjustedClose(candle: MarketCandle) {
 
 function dateLabel(value?: string) {
   if (!value || !Number.isFinite(Date.parse(value))) return 'Belum tersedia'
-  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value))
+  return new Intl.DateTimeFormat('id-ID', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value))
 }
 
 function signalStyle(signal: ModelSignal | PairResult['signal']) {
@@ -149,7 +149,7 @@ function BacktestSection({ report, costInput, onCostChange }: { report: QuantBac
           <tbody>{rows.map(({ strategy, side }) => {
             const stats = side.stats
             const sideName = side.side === 'LONG' ? 'Long' : side.side === 'SHORT' ? 'Short' : side.side === 'LONG_SPREAD' ? 'Long spread' : 'Short spread'
-            const reliability = stats.count >= 30 ? 'Sampel ≥30' : stats.count > 0 ? 'Sampel tipis' : 'Belum ada trade'
+            const reliability = stats.count >= 30 ? 'n ≥ 30 · tetap historis' : stats.count > 0 ? 'Sampel tipis' : 'Belum ada trade'
             return <tr key={`${strategy.kind}-${side.side}`} className="border-t border-border">
               <td className="px-3 py-3"><span className="block font-medium">{strategy.name}</span><span className="text-muted-foreground">{sideName}</span></td>
               <td className="px-3 py-3 text-right tabular-nums">{stats.count}{stats.count ? ` (${stats.wins} menang)` : ''}</td>
