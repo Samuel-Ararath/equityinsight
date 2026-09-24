@@ -103,6 +103,24 @@ export async function getCandles(assetId: string, timeframe = '1d'): Promise<Mar
   return [...byTime.values()].sort((a, b) => Date.parse(a.candle_time) - Date.parse(b.candle_time))
 }
 
+/** Prefer the authenticated Vercel/OpenBB history proxy in Quant Lab. GitHub Pages and
+ * unavailable provider calls continue to use the existing public Supabase candle cache.
+ */
+export async function getQuantCandles(asset: MarketAsset, timeframe = '1d'): Promise<MarketCandle[]> {
+  const staticPages = typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')
+  if (timeframe !== '1d' || staticPages || typeof window === 'undefined') return getCandles(asset.id, timeframe)
+
+  try {
+    const response = await fetch(`/quant-api/history?asset_id=${encodeURIComponent(asset.id)}`, { cache: 'no-store' })
+    if (!response.ok) throw new Error(`OpenBB history unavailable (${response.status})`)
+    const payload = await response.json() as { candles?: MarketCandle[] }
+    if (!Array.isArray(payload.candles) || payload.candles.length === 0) throw new Error('OpenBB returned no candles')
+    return payload.candles.map((candle) => ({ ...candle, provider: 'OpenBB · Yahoo Finance', is_delayed: true }))
+  } catch {
+    return getCandles(asset.id, timeframe)
+  }
+}
+
 export async function syncMarketData(symbol?: string, timeframe = '1d') {
   assertConfig()
   const params = new URLSearchParams({ timeframe })

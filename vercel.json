@@ -3,7 +3,15 @@
   "services": {
     "frontend": {
       "root": "./",
-      "framework": "nextjs"
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "market_api",
+          "format": "url",
+          "env": "MARKET_API_URL"
+        }
+      ]
     },
     "market_api": {
       "root": "backend/",
@@ -14,15 +22,21 @@
   "rewrites": [
     {
       "source": "/health",
-      "destination": { "service": "market_api" }
+      "destination": {
+        "service": "market_api"
+      }
     },
     {
       "source": "/api/(.*)",
-      "destination": { "service": "market_api" }
+      "destination": {
+        "service": "market_api"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": { "service": "frontend" }
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }
