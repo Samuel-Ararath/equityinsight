@@ -171,7 +171,7 @@ async def market_history(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Historical provider request failed")
-        raise HTTPException(status_code=502, detail=f"Historical provider request failed ({type(exc).__name__}: {str(exc)[:160]}).") from exc
+        raise HTTPException(status_code=502, detail="The selected provider request failed.") from exc
 
     if not candles:
         raise HTTPException(status_code=404, detail="No historical candles were returned.")
