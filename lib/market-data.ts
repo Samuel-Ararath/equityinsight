@@ -112,10 +112,10 @@ export async function getQuantCandles(asset: MarketAsset, timeframe = '1d'): Pro
 
   try {
     const response = await fetch(`/quant-api/history?asset_id=${encodeURIComponent(asset.id)}`, { cache: 'no-store' })
-    if (!response.ok) throw new Error(`OpenBB history unavailable (${response.status})`)
+    if (!response.ok) throw new Error(`Historical provider unavailable (${response.status})`)
     const payload = await response.json() as { candles?: MarketCandle[] }
-    if (!Array.isArray(payload.candles) || payload.candles.length === 0) throw new Error('OpenBB returned no candles')
-    return payload.candles.map((candle) => ({ ...candle, provider: 'OpenBB · Yahoo Finance', is_delayed: true }))
+    if (!Array.isArray(payload.candles) || payload.candles.length === 0) throw new Error('Historical provider returned no candles')
+    return payload.candles.map((candle) => ({ ...candle, provider: 'Yahoo Finance · historical', is_delayed: true }))
   } catch {
     return getCandles(asset.id, timeframe)
   }
