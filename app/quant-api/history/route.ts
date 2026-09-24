@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     })
     if (!upstream.ok) {
       const status = upstream.status === 404 || upstream.status === 422 ? upstream.status : 502
-      return json({ error: 'Historical provider request failed', provider_status: upstream.status }, status)
+      return json({ error: 'Historical provider request failed' }, status)
     }
     const body = await upstream.json()
     return json(body, 200, { 'Cache-Control': 'public, max-age=60, s-maxage=900, stale-while-revalidate=86400' })
