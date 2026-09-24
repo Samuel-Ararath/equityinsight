@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
       cache: 'no-store',
       signal: AbortSignal.timeout(8_000),
     })
-    if (!catalog.ok) return json({ error: 'Asset catalog is temporarily unavailable', catalog_status: catalog.status }, 503)
+    if (!catalog.ok) return json({ error: 'Asset catalog is temporarily unavailable' }, 503)
     const rows = await catalog.json() as CatalogAsset[]
     asset = rows[0]
-  } catch (cause) {
-    return json({ error: 'Asset catalog is temporarily unavailable', catalog_error: cause instanceof Error ? cause.name : 'UnknownError' }, 503)
+  } catch {
+    return json({ error: 'Asset catalog is temporarily unavailable' }, 503)
   }
 
   if (!asset?.provider_symbol) return json({ error: 'Active asset was not found' }, 404)
@@ -82,15 +82,7 @@ export async function GET(request: NextRequest) {
     })
     if (!upstream.ok) {
       const status = upstream.status === 404 || upstream.status === 422 ? upstream.status : 502
-      let providerType = 'UnknownError'
-      let providerDiagnostic = ''
-      try {
-        const errorBody = await upstream.json() as { detail?: string }
-        providerDiagnostic = (errorBody.detail ?? '').replace(/https?:\/\/\S+/g, '[url]').slice(0, 220)
-        const match = providerDiagnostic.match(/\(([A-Za-z0-9_]+)/)
-        if (match) providerType = match[1]
-      } catch { /* do not expose untrusted upstream response bodies */ }
-      return json({ error: 'Historical provider request failed', provider_status: upstream.status, provider_type: providerType, provider_diagnostic: providerDiagnostic }, status)
+      return json({ error: 'Historical provider request failed' }, status)
     }
     const body = await upstream.json()
     return json(body, 200, { 'Cache-Control': 'public, max-age=60, s-maxage=900, stale-while-revalidate=86400' })
