@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { getCandles, listMarketAssets, syncMarketData, type MarketAsset, type MarketCandle } from '@/lib/market-data'
+import { getQuantCandles, listMarketAssets, syncMarketData, type MarketAsset, type MarketCandle } from '@/lib/market-data'
 import { calculateConsensus, calculateMeanReversion, calculatePairsSignal, calculateRealizedVolatility, calculateTrend, runQuantBacktest, type BacktestSideResult, type ModelSignal, type PairResult, type QuantBacktestReport } from '@/components/market/quant-models'
 
 const WINDOWS = [
@@ -260,8 +260,8 @@ export function QuantLab() {
     setPairCandles([])
     const load = async () => {
       let [latest, pairLatest] = await Promise.all([
-        getCandles(selected.id, '1d'),
-        pair ? getCandles(pair.id, '1d') : Promise.resolve([]),
+        getQuantCandles(selected, '1d'),
+        pair ? getQuantCandles(pair, '1d') : Promise.resolve([]),
       ])
       const needsRefresh = (rows: MarketCandle[]) => !rows.length || rows.filter((candle) => Number.isFinite(candle.adjusted_close) && (candle.adjusted_close ?? 0) > 0).length / rows.length < 0.95
       const selectedNeedsRefresh = needsRefresh(latest)
@@ -279,8 +279,8 @@ export function QuantLab() {
           try {
             await syncMarketData(symbols.join(','), '1d')
             ;[latest, pairLatest] = await Promise.all([
-              getCandles(selected.id, '1d'),
-              pair ? getCandles(pair.id, '1d') : Promise.resolve([]),
+              getQuantCandles(selected, '1d'),
+              pair ? getQuantCandles(pair, '1d') : Promise.resolve([]),
             ])
           } catch (syncError) {
             if (!latest.length) throw syncError
@@ -307,7 +307,7 @@ export function QuantLab() {
     setError(null)
     try {
       await syncMarketData([selected.symbol, ...(pair ? [pair.symbol] : [])].join(','), '1d')
-      const [latest, pairLatest] = await Promise.all([getCandles(selected.id, '1d'), pair ? getCandles(pair.id, '1d') : Promise.resolve([])])
+      const [latest, pairLatest] = await Promise.all([getQuantCandles(selected, '1d'), pair ? getQuantCandles(pair, '1d') : Promise.resolve([])])
       setCandles(latest)
       setPairCandles(pairLatest)
     } catch (cause) {
