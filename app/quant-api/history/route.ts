@@ -83,12 +83,14 @@ export async function GET(request: NextRequest) {
     if (!upstream.ok) {
       const status = upstream.status === 404 || upstream.status === 422 ? upstream.status : 502
       let providerType = 'UnknownError'
+      let providerDiagnostic = ''
       try {
         const errorBody = await upstream.json() as { detail?: string }
-        const match = errorBody.detail?.match(/\(([A-Za-z0-9_]+)\)\.?$/)
+        providerDiagnostic = (errorBody.detail ?? '').replace(/https?:\/\/\S+/g, '[url]').slice(0, 220)
+        const match = providerDiagnostic.match(/\(([A-Za-z0-9_]+)/)
         if (match) providerType = match[1]
       } catch { /* do not expose untrusted upstream response bodies */ }
-      return json({ error: 'Historical provider request failed', provider_status: upstream.status, provider_type: providerType }, status)
+      return json({ error: 'Historical provider request failed', provider_status: upstream.status, provider_type: providerType, provider_diagnostic: providerDiagnostic }, status)
     }
     const body = await upstream.json()
     return json(body, 200, { 'Cache-Control': 'public, max-age=60, s-maxage=900, stale-while-revalidate=86400' })
