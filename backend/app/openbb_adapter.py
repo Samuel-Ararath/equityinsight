@@ -235,6 +235,8 @@ def fetch_history(
     try:
         from openbb import obb
     except ImportError as exc:
+        if provider == "yfinance":
+            return _fetch_yahoo_chart(symbol, start_date, end_date, interval)
         raise OpenBBUnavailable("Install the OpenBB package and the selected provider extension.") from exc
 
     try:
