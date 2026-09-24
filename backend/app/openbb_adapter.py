@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from math import isfinite
+import json
+import logging
 import re
 from typing import Any, Literal
+from urllib.parse import quote, urlencode
+from urllib.request import Request as UrlRequest, urlopen
 
 import pandas as pd
 
@@ -151,6 +155,72 @@ def _to_frame(result: Any) -> pd.DataFrame:
     raise TypeError("OpenBB returned an unsupported historical-data response.")
 
 
+def _fetch_yahoo_chart(
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    interval: Interval,
+) -> list[dict[str, Any]]:
+    """Fetch normalized daily history from Yahoo's public chart endpoint as a fallback."""
+    start_epoch = int(datetime.combine(start_date, time.min, tzinfo=timezone.utc).timestamp())
+    # Yahoo treats period2 as exclusive; include the requested final calendar day.
+    end_epoch = int(datetime.combine(end_date + timedelta(days=1), time.min, tzinfo=timezone.utc).timestamp())
+    query = urlencode({
+        "period1": start_epoch,
+        "period2": end_epoch,
+        "interval": interval,
+        "events": "div,splits",
+        "includeAdjustedClose": "true",
+    })
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(symbol, safe='.^=.-')}?{query}"
+    request = UrlRequest(url, headers={"User-Agent": "Mozilla/5.0 (compatible; EquityInsight/1.0)", "Accept": "application/json"})
+    with urlopen(request, timeout=20) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    chart = payload.get("chart", {})
+    result = (chart.get("result") or [None])[0]
+    if not result:
+        raise RuntimeError("Yahoo Finance did not return historical candles.")
+    timestamps = result.get("timestamp") or []
+    indicators = result.get("indicators") or {}
+    quote_rows = indicators.get("quote") or [{}]
+    quote_data = quote_rows[0] or {}
+    adjusted_rows = indicators.get("adjclose") or [{}]
+    adjusted_data = adjusted_rows[0].get("adjclose") or []
+    length = len(timestamps)
+
+    def column(name: str) -> list[Any]:
+        values = quote_data.get(name) or []
+        return values if len(values) == length else [None] * length
+
+    opens, highs, lows = (column(name) for name in ("open", "high", "low"))
+    closes, volumes = column("close"), column("volume")
+    if len(adjusted_data) != length:
+        adjusted_data = [None] * length
+
+    candles: list[dict[str, Any]] = []
+    for stamp, open_price, high, low, close, volume, adjusted in zip(
+        timestamps, opens, highs, lows, closes, volumes, adjusted_data
+    ):
+        open_value, high_value, low_value, close_value = (
+            _as_float(value) for value in (open_price, high, low, close)
+        )
+        if None in (open_value, high_value, low_value, close_value) or close_value <= 0:
+            continue
+        candles.append({
+            "candle_time": datetime.fromtimestamp(int(stamp), timezone.utc).isoformat(),
+            "open": open_value,
+            "high": high_value,
+            "low": low_value,
+            "close": close_value,
+            "adjusted_close": _as_float(adjusted),
+            "volume": _as_float(volume),
+            "provider": "yfinance",
+            "is_delayed": True,
+        })
+    return candles
+
+
 def fetch_history(
     market: Market,
     symbol: str,
@@ -167,14 +237,29 @@ def fetch_history(
     except ImportError as exc:
         raise OpenBBUnavailable("Install the OpenBB package and the selected provider extension.") from exc
 
-    router_name, endpoint_name = ROUTERS[market]
-    router = getattr(getattr(obb, router_name), endpoint_name)
-    request = getattr(router, "historical")
-    result = request(
-        symbol=symbol,
-        start_date=start_date.isoformat(),
-        end_date=end_date.isoformat(),
-        interval=interval,
-        provider=provider,
-    )
-    return normalize_history_frame(_to_frame(result), provider)
+    try:
+        router_name, endpoint_name = ROUTERS[market]
+        router = getattr(getattr(obb, router_name), endpoint_name)
+        request = getattr(router, "historical")
+        result = request(
+            symbol=symbol,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            interval=interval,
+            provider=provider,
+        )
+        candles = normalize_history_frame(_to_frame(result), provider)
+        if candles:
+            return candles
+        if provider != "yfinance":
+            return candles
+    except Exception as exc:
+        if provider != "yfinance":
+            raise
+        logging.getLogger("equityinsight.market").warning(
+            "OpenBB %s history failed; trying Yahoo chart fallback (%s)", market, type(exc).__name__
+        )
+
+    # Some serverless environments cannot use the provider extension's transport;
+    # this keeps free Yahoo history available without exposing a credential.
+    return _fetch_yahoo_chart(symbol, start_date, end_date, interval)
