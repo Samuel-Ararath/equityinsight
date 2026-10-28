@@ -63,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  if (pathname === '/') return <>{children}</>
   const segments = pathname.split('/').filter(Boolean)
   const currentLabel = BREADCRUMB_LABELS[segments[0]] ?? 'Dashboard'
 
