@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-highs-wasm.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-highs-wasm.mjs",
     "build": "next build",
     "start": "next start"
   },
@@ -12,6 +14,7 @@
     "@vercel/analytics": "1.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "highs": "1.15.4",
     "lightweight-charts": "^5.2.1",
     "lucide-react": "^1.16.0",
     "next": "16.3.3",
@@ -32,3 +35,4 @@
     "typescript": "5.7.3"
   }
 }
+
