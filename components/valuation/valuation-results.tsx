@@ -142,7 +142,7 @@ export function ValuationResults({
             )}
             <div className="mt-2 grid w-full grid-cols-2 gap-3 border-t border-border pt-4">
               <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">Rata-rata Harga Wajar</span>
+                <span className="text-xs text-muted-foreground">Median lintas metode</span>
                 <span className="font-serif text-lg font-semibold text-gold tabular-nums">
                   {formatRupiah(result.averageFairValue)}
                 </span>
@@ -156,7 +156,7 @@ export function ValuationResults({
             </div>
             {result.fairValues.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                Rata-rata dari {result.fairValues.length} metode:{' '}
+                {result.fairValues.length} metode menghasilkan estimasi valid. Rentang antar-metode: {Number.isFinite(result.modelDispersionPct) ? `${result.modelDispersionPct.toFixed(1)}%` : '—'}. Metode yang dihitung:{' '}
                 {result.fairValues.map((f) => f.label).join(', ')}.
               </p>
             )}
