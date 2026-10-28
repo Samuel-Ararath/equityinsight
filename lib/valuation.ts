@@ -42,6 +42,7 @@ export type ValuationResult = {
   equityValue: number
   fairValues: { label: string; value: number; formula: string; suitableFor: string }[]
   averageFairValue: number
+  modelDispersionPct: number
   marginOfSafety: number
   verdict: 'UNDERVALUED' | 'FAIR VALUE' | 'OVERVALUED' | null
   recommendation: Recommendation
@@ -136,7 +137,9 @@ function blankRecommendation(reason = 'Data harga dan nilai wajar belum cukup un
 }
 
 /** Heuristic levels are decision-support zones, not guaranteed prices or trade execution. */
-export function buildRecommendation(fairValue: number, currentPrice: number, quality?: FinancialDataQuality): Recommendation {
+export function buildRecommendation(fairValue: number, currentPrice: number, quality?: FinancialDataQuality, modelCount = 0, dispersionPct = Infinity): Recommendation {
+  if (modelCount < 3) return blankRecommendation('Dibutuhkan sedikitnya 3 metode valuasi yang valid sebelum sinyal lintas-model ditampilkan.')
+  if (dispersionPct > 60) return blankRecommendation('Hasil antar-metode terlalu berjauhan (>60% dari median). Tinjau kecocokan model dan asumsi sebelum menarik kesimpulan.')
   if (quality && (!quality.complete || !['verified', 'manual'].includes(quality.confidence))) {
     const missing = quality.missingFields.length ? ` Pos belum tersedia: ${quality.missingFields.join(', ')}.` : ''
     return blankRecommendation(`Sinyal ditahan karena kualitas data belum memadai (${quality.confidence}).${missing}`)
@@ -179,17 +182,24 @@ export function runValuation(f: FinancialData, a: ValuationAssumptions, quality?
     { label: 'Relative (PBV)', value: pbvValue, formula: 'PBV sektor × BVPS', suitableFor: 'Bank/properti dan peer setara' },
   ]
   const fairValues = candidates.filter((c) => Number.isFinite(c.value) && c.value > 0)
-  const averageFairValue = fairValues.length ? fairValues.reduce((sum, item) => sum + item.value, 0) / fairValues.length : NaN
+  const sortedValues = fairValues.map((item) => item.value).sort((left, right) => left - right)
+  // Median is less sensitive than a simple mean to extreme estimates. The
+  // accompanying dispersion gate prevents a false consensus from being implied.
+  const averageFairValue = sortedValues.length ? sortedValues.length % 2
+    ? sortedValues[(sortedValues.length - 1) / 2]
+    : (sortedValues[sortedValues.length / 2 - 1] + sortedValues[sortedValues.length / 2]) / 2 : NaN
+  const modelDispersionPct = averageFairValue > 0 && sortedValues.length
+    ? ((sortedValues.at(-1)! - sortedValues[0]) / averageFairValue) * 100 : Infinity
   let marginOfSafety = NaN
   let verdict: ValuationResult['verdict'] = null
   const qualityBlocked = quality && (!quality.complete || !['verified', 'manual'].includes(quality.confidence))
-  if (!qualityBlocked && ok(averageFairValue) && averageFairValue > 0 && ok(f.hargaSaham) && f.hargaSaham > 0) {
+  if (!qualityBlocked && fairValues.length >= 3 && modelDispersionPct <= 60 && ok(averageFairValue) && averageFairValue > 0 && ok(f.hargaSaham) && f.hargaSaham > 0) {
     marginOfSafety = ((averageFairValue - f.hargaSaham) / averageFairValue) * 100
     if (marginOfSafety > 30) verdict = 'UNDERVALUED'
     else if (marginOfSafety >= 10) verdict = 'FAIR VALUE'
     else verdict = 'OVERVALUED'
   }
-  return { eps, bvps, grahamNumber, grahamDefensiveValue, dcfPerShare: dcf.perShare, ddmPerShare, earningsPowerValue, residualIncomeValue, assetValueProxy, perValue, pbvValue, freeCashFlow: dcf.freeCashFlow, enterprisePV: dcf.enterprisePV, terminalValuePV: dcf.terminalValuePV, equityValue: dcf.equityValue, fairValues, averageFairValue, marginOfSafety, verdict, recommendation: buildRecommendation(averageFairValue, f.hargaSaham, quality) }
+  return { eps, bvps, grahamNumber, grahamDefensiveValue, dcfPerShare: dcf.perShare, ddmPerShare, earningsPowerValue, residualIncomeValue, assetValueProxy, perValue, pbvValue, freeCashFlow: dcf.freeCashFlow, enterprisePV: dcf.enterprisePV, terminalValuePV: dcf.terminalValuePV, equityValue: dcf.equityValue, fairValues, averageFairValue, modelDispersionPct, marginOfSafety, verdict, recommendation: buildRecommendation(averageFairValue, f.hargaSaham, quality, fairValues.length, modelDispersionPct) }
 }
 
 export function upsideVsPrice(fairValue: number, price: number): number {
