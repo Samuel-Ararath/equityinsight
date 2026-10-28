@@ -17,6 +17,7 @@ import {
   X,
   UserRound,
   Crown,
+  Wrench,
 } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     { href: '/kinerja', label: 'Fundamental & Kinerja', icon: Activity },
   ] },
   { label: 'Capital allocation', items: [{ href: '/valuasi', label: 'Lab Proyek & RAB', icon: Building2 }] },
+  { label: 'Engineering & analytics', items: [{ href: '/engineering', label: 'Engineering Workbench', icon: Wrench }] },
 ]
 
 const BREADCRUMB_LABELS: Record<string, string> = {
@@ -48,6 +50,7 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   'quant-lab': 'Model Kuantitatif',
   akun: 'Akun',
   admin: 'Administrator',
+  engineering: 'Engineering Workbench',
 }
 
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
