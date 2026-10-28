@@ -17,6 +17,9 @@ import {
   X,
   UserRound,
   Crown,
+  FlaskConical,
+  Gauge,
+  ChartNoAxesCombined,
   Wrench,
 } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
@@ -38,7 +41,12 @@ const NAV_GROUPS: NavGroup[] = [
     { href: '/kinerja', label: 'Fundamental & Kinerja', icon: Activity },
   ] },
   { label: 'Capital allocation', items: [{ href: '/valuasi', label: 'Lab Proyek & RAB', icon: Building2 }] },
-  { label: 'Engineering & analytics', items: [{ href: '/engineering', label: 'Engineering Workbench', icon: Wrench }] },
+  { label: 'Engineering & analytics', items: [
+    { href: '/engineering', label: 'Engineering Studio', icon: Wrench },
+    { href: '/engineering/solver', label: 'Solver', icon: Gauge },
+    { href: '/engineering/quality', label: 'Quality & Statistics', icon: FlaskConical },
+    { href: '/engineering/data', label: 'Data Analysis', icon: ChartNoAxesCombined },
+  ] },
 ]
 
 const BREADCRUMB_LABELS: Record<string, string> = {
@@ -51,6 +59,9 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   akun: 'Akun',
   admin: 'Administrator',
   engineering: 'Engineering Workbench',
+  solver: 'Solver',
+  quality: 'Quality & Statistics',
+  data: 'Data Analysis',
 }
 
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
@@ -89,7 +100,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname])
   if (pathname === '/') return <>{children}</>
   const segments = pathname.split('/').filter(Boolean)
-  const currentLabel = BREADCRUMB_LABELS[segments[0]] ?? 'Dashboard'
+  const currentLabel = BREADCRUMB_LABELS[segments[1]] ?? BREADCRUMB_LABELS[segments[0]] ?? 'Dashboard'
 
   return <div className="flex min-h-screen">
     <aside className={cn('sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex', collapsed ? 'w-[76px]' : 'w-64')}>
@@ -102,3 +113,4 @@ export function AppShell({ children }: { children: ReactNode }) {
     {gateOpen && pathname !== '/' && pathname !== '/akun' && pathname !== '/akun/' && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/65 p-5 backdrop-blur-sm" onClick={()=>setGateOpen(false)}><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl" onClick={event=>event.stopPropagation()}><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Crown className="size-5"/></div><h2 className="mt-4 text-center font-serif text-2xl">Workspace memerlukan akun</h2><p className="mt-2 text-center text-sm leading-6 text-muted-foreground">Daftar gratis untuk membuka workspace Elmesia. Fitur premium dan masa simpan data mengikuti role akun.</p><Link href="/akun?mode=signup" className="mt-5 block rounded-lg bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Buat akun</Link><Link href="/akun" className="mt-3 block text-center text-sm text-muted-foreground hover:text-foreground">Masuk ke akun</Link><button type="button" onClick={()=>setGateOpen(false)} className="mt-4 w-full text-xs text-muted-foreground">Tutup</button></div></div>}
   </div>
 }
+
