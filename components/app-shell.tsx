@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity,
   BrainCircuit,
@@ -16,6 +16,7 @@ import {
   TrendingUp,
   X,
   UserRound,
+  Crown,
 } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
@@ -45,12 +46,14 @@ const BREADCRUMB_LABELS: Record<string, string> = {
   saham: 'Analisis Saham',
   'data-pasar': 'Market Terminal',
   'quant-lab': 'Model Kuantitatif',
+  akun: 'Akun',
+  admin: 'Administrator',
 }
 
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link href="/" className="flex items-center gap-3 overflow-hidden" aria-label="Kembali ke halaman utama Elmesia">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-gold/40 bg-gold/10 font-serif text-lg font-semibold text-gold">E</span>
+      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gold/40 bg-sidebar"><img src="/equityinsight/elmesia-crest.png" alt="" className="size-full object-contain p-0.5" /></span>
       {!collapsed && <span className="flex flex-col leading-tight"><span className="font-serif text-base font-semibold text-sidebar-foreground">Elmesia</span><span className="text-[0.65rem] tracking-[0.18em] text-muted-foreground uppercase">Ideas into intelligence</span></span>}
     </Link>
   )
@@ -64,6 +67,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [hasSession, setHasSession] = useState(false)
+  const [gateOpen, setGateOpen] = useState(false)
+  useEffect(() => {
+    const check = () => {
+      const sessionKey = Object.keys(localStorage).find((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
+      let stored = false
+      if (sessionKey) {
+        try { const session = JSON.parse(localStorage.getItem(sessionKey) || 'null'); stored = Boolean(session?.access_token && session?.user?.id) } catch { stored = false }
+      }
+      setHasSession(stored)
+      if (pathname !== '/' && pathname !== '/akun' && pathname !== '/akun/' && !stored) setGateOpen(true)
+    }
+    check()
+    window.addEventListener('elmesia-auth-change', check)
+    window.addEventListener('storage', check)
+    return () => { window.removeEventListener('elmesia-auth-change', check); window.removeEventListener('storage', check) }
+  }, [pathname])
   if (pathname === '/') return <>{children}</>
   const segments = pathname.split('/').filter(Boolean)
   const currentLabel = BREADCRUMB_LABELS[segments[0]] ?? 'Dashboard'
@@ -71,10 +91,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen">
     <aside className={cn('sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 lg:flex', collapsed ? 'w-[76px]' : 'w-64')}>
       <div className={cn('flex h-16 items-center border-b border-sidebar-border px-4', collapsed && 'justify-center px-2')}><Brand collapsed={collapsed} /></div>
-      <div className="flex-1 overflow-y-auto p-3"><NavLinks pathname={pathname} collapsed={collapsed} /></div>
+      <div className="flex-1 overflow-y-auto p-3"><NavLinks pathname={pathname} collapsed={collapsed} onNavigate={() => { if (!hasSession) setGateOpen(true) }} /></div>
       <div className="border-t border-sidebar-border p-3"><button type="button" onClick={() => setCollapsed((value) => !value)} className={cn('flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground', collapsed && 'justify-center px-0')} aria-label={collapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}>{collapsed ? <PanelLeftOpen className="size-[18px]" /> : <><PanelLeftClose className="size-[18px]" /><span>Ciutkan</span></>}</button></div>
     </aside>
-    {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} aria-hidden /><aside className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-sidebar-border bg-sidebar"><div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4"><Brand /><button type="button" onClick={() => setMobileOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Tutup menu"><X className="size-5" /></button></div><div className="flex-1 overflow-y-auto p-3"><NavLinks pathname={pathname} onNavigate={() => setMobileOpen(false)} /></div></aside></div>}
-    <div className="flex min-w-0 flex-1 flex-col"><header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6"><button type="button" onClick={() => setMobileOpen(true)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Buka menu"><Menu className="size-5" /></button><Link href="/" className="hidden items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground sm:flex" aria-label="Kembali ke Home"><span>Elmesia</span><ChartLine className="size-3.5 text-muted-foreground/50" /></Link><span className="font-medium text-foreground">{currentLabel}</span><div className="ml-auto flex items-center gap-3"><Link href="/akun" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Akun Elmesia"><UserRound className="size-4"/><span className="hidden sm:inline">Akun</span></Link><span className="hidden items-center gap-1.5 text-[0.68rem] font-medium text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-positive shadow-[0_0_10px_var(--positive)]" />Research mode</span><ThemeToggle /></div></header><main className="flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main></div>
+    {mobileOpen && <div className="fixed inset-0 z-50 lg:hidden"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} aria-hidden /><aside className="absolute inset-y-0 left-0 flex w-72 flex-col border-r border-sidebar-border bg-sidebar"><div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4"><Brand /><button type="button" onClick={() => setMobileOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Tutup menu"><X className="size-5" /></button></div><div className="flex-1 overflow-y-auto p-3"><NavLinks pathname={pathname} onNavigate={() => { setMobileOpen(false); if (!hasSession) setGateOpen(true) }} /></div></aside></div>}
+    <div className="flex min-w-0 flex-1 flex-col"><header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/75 px-4 backdrop-blur-xl md:px-6"><button type="button" onClick={() => setMobileOpen(true)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Buka menu"><Menu className="size-5" /></button><Link href="/" className="hidden items-center gap-1.5 text-sm text-muted-foreground transition hover:text-foreground sm:flex" aria-label="Kembali ke Home"><span>Elmesia</span><ChartLine className="size-3.5 text-muted-foreground/50" /></Link><span className="font-medium text-foreground">{currentLabel}</span><div className="ml-auto flex items-center gap-3"><Link href="/akun" className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Akun Elmesia"><UserRound className="size-4"/><span className="hidden sm:inline">Akun</span></Link>{!hasSession && <button type="button" onClick={()=>setGateOpen(true)} className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">Masuk</button>}<span className="hidden items-center gap-1.5 text-[0.68rem] font-medium text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-positive shadow-[0_0_10px_var(--positive)]" />Research mode</span><ThemeToggle /></div></header><main className="relative flex-1 px-4 py-6 md:px-6 lg:px-8">{!hasSession && pathname !== '/akun' && pathname !== '/akun/' ? <div className="pointer-events-none select-none blur-[2px] opacity-35" aria-hidden>{children}</div> : children}{!hasSession && pathname !== '/akun' && pathname !== '/akun/' && <div className="absolute inset-0 z-20 grid place-items-start justify-center bg-background/45 px-4 pt-24"><div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-2xl"><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Crown className="size-5"/></span><h2 className="mt-4 font-serif text-2xl">Masuk untuk melanjutkan</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Buat akun Elmesia gratis untuk menggunakan workspace, menyimpan riset, dan membuka fitur sesuai peran Anda.</p><Link href="/akun?mode=signup" className="mt-5 block rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground">Buat akun gratis</Link><Link href="/akun" className="mt-3 block text-sm text-muted-foreground hover:text-foreground">Saya sudah punya akun</Link></div></div>}</main></div>
+    {gateOpen && pathname !== '/' && pathname !== '/akun' && pathname !== '/akun/' && <div className="fixed inset-0 z-[60] grid place-items-center bg-black/65 p-5 backdrop-blur-sm" onClick={()=>setGateOpen(false)}><div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl" onClick={event=>event.stopPropagation()}><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary"><Crown className="size-5"/></div><h2 className="mt-4 text-center font-serif text-2xl">Workspace memerlukan akun</h2><p className="mt-2 text-center text-sm leading-6 text-muted-foreground">Daftar gratis untuk membuka workspace Elmesia. Fitur premium dan masa simpan data mengikuti role akun.</p><Link href="/akun?mode=signup" className="mt-5 block rounded-lg bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Buat akun</Link><Link href="/akun" className="mt-3 block text-center text-sm text-muted-foreground hover:text-foreground">Masuk ke akun</Link><button type="button" onClick={()=>setGateOpen(false)} className="mt-4 w-full text-xs text-muted-foreground">Tutup</button></div></div>}
   </div>
 }
