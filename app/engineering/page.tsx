@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function parseSeries(value: string) {
-  return value.split(/[\s,;]+/).map(Number).filter(Number.isFinite)
+  return value.trim() ? value.split(/[\s,;]+/).map(Number).filter(Number.isFinite) : []
 }
 
 function solveLinear(matrix: number[][], rhs: number[]) {
@@ -62,3 +62,4 @@ export default function EngineeringPage() {
     </div>
   </div>
 }
+
