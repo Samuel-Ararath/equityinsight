@@ -18,10 +18,9 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  title: 'EquityInsight — Fundamental Intelligence',
+  title: { default: 'Elmesia — Ideas into intelligence', template: '%s | Elmesia' },
   description:
-    'Platform analisis pasar dan valuasi fundamental untuk investor yang berpikir jangka panjang.',
-  generator: 'v0.app',
+    'Satu lingkungan untuk riset pasar, membangun perusahaan, dan analisis engineering.',
 }
 
 export const viewport: Viewport = {
@@ -33,7 +32,7 @@ export const viewport: Viewport = {
 }
 
 // Prevents theme flash: applies the stored (or default dark) theme before paint.
-const themeScript = `(function(){try{var t=localStorage.getItem('equityinsight-theme')||'dark';var d=document.documentElement;d.classList.remove('dark','light');d.classList.add(t);}catch(e){document.documentElement.classList.add('dark');}})();`
+const themeScript = `(function(){try{var t=localStorage.getItem('elmesia-theme')||localStorage.getItem('equityinsight-theme')||'dark';var d=document.documentElement;d.classList.remove('dark','light');d.classList.add(t);}catch(e){document.documentElement.classList.add('dark');}})();`
 
 export default function RootLayout({
   children,

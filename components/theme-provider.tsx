@@ -12,7 +12,7 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = 'asyurian-theme'
+const STORAGE_KEY = 'elmesia-theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Default is dark; the inline script in layout has already applied the class.
