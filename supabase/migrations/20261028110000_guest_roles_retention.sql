@@ -26,6 +26,13 @@ alter table public.saved_workspace_data enable row level security;
 create policy "Members access own saved data" on public.saved_workspace_data
   for all to authenticated using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
+revoke all on public.saved_workspace_data from anon;
+
+alter policy "users manage their valuation projects" on public.valuation_projects to authenticated;
+alter policy "users access their valuation runs" on public.valuation_runs to authenticated;
+alter policy "users access their valuation results" on public.valuation_results to authenticated;
+alter policy "users access their financial periods" on public.financial_periods to authenticated;
+alter policy "users access their financial metrics" on public.financial_metrics to authenticated;
 
 create or replace function public.set_saved_data_expiry()
 returns trigger language plpgsql set search_path = '' as $$
